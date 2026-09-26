@@ -1,0 +1,266 @@
+{
+  "image": "photo_bill.jpg",
+  "lang": "hi-IN",
+  "receipt": {
+    "receipt_id": "f1f7c4ee-38e7-4569-8598-a5b8dc14df42",
+    "status": "done",
+    "kind": "supplier",
+    "settled": false,
+    "vendor_name": "SHREE BALAJI TRADERS",
+    "bill_date": "2026-09-24",
+    "total_paise": 360000,
+    "retried_in_english": false,
+    "error": null
+  },
+  "fields_filled": 3,
+  "sarvam_calls": 11,
+  "log": [
+    {
+      "call": "extract",
+      "kwargs": {
+        "schema": "{\"type\": \"object\", \"properties\": {\"vendor_name\": {\"type\": \"string\", \"description\": \"Name of the shop or business that issued the bill, as printed at the top\"}, \"bill_date\": {\"type\": \"string\", \"description\": \"Bill date as printed\"}, \"total\": {\"type\": \"number\", \"description\": \"Final amount payable in INR (grand total after taxes), as a number\"}}}",
+        "language": "hi-IN",
+        "output_format": "json"
+      },
+      "response": {
+        "job_id": "01a0ddaa-48da-7e4c-a481-4aa91026740a",
+        "status": "pending",
+        "run_id": "01a0ddaa-490b-7437-a7d8-25d075440761",
+        "$schema": "https://api.sarvam.ai/schemas/PublicStartJobResponse.json"
+      },
+      "seconds": 0.43
+    },
+    {
+      "call": "get_status",
+      "kwargs": {},
+      "response": {
+        "job_id": "01a0ddaa-48da-7e4c-a481-4aa91026740a",
+        "status": "pending",
+        "pipeline": "extract",
+        "usage": {
+          "pages_total": 0,
+          "pages_processed": 0,
+          "pages_succeeded": 0,
+          "pages_failed": 0
+        },
+        "created_at": "2026-09-26T12:21:59Z",
+        "updated_at": "2026-09-26T12:21:59Z",
+        "$schema": "https://api.sarvam.ai/schemas/PublicJobBody.json"
+      },
+      "seconds": 0.08
+    },
+    {
+      "call": "get_status",
+      "kwargs": {},
+      "response": {
+        "job_id": "01a0ddaa-48da-7e4c-a481-4aa91026740a",
+        "status": "pending",
+        "pipeline": "extract",
+        "usage": {
+          "pages_total": 0,
+          "pages_processed": 0,
+          "pages_succeeded": 0,
+          "pages_failed": 0
+        },
+        "created_at": "2026-09-26T12:21:59Z",
+        "updated_at": "2026-09-26T12:21:59Z",
+        "$schema": "https://api.sarvam.ai/schemas/PublicJobBody.json"
+      },
+      "seconds": 0.06
+    },
+    {
+      "call": "get_status",
+      "kwargs": {},
+      "response": {
+        "job_id": "01a0ddaa-48da-7e4c-a481-4aa91026740a",
+        "status": "pending",
+        "pipeline": "extract",
+        "usage": {
+          "pages_total": 0,
+          "pages_processed": 0,
+          "pages_succeeded": 0,
+          "pages_failed": 0
+        },
+        "created_at": "2026-09-26T12:21:59Z",
+        "updated_at": "2026-09-26T12:21:59Z",
+        "$schema": "https://api.sarvam.ai/schemas/PublicJobBody.json"
+      },
+      "seconds": 0.06
+    },
+    {
+      "call": "get_status",
+      "kwargs": {},
+      "response": {
+        "job_id": "01a0ddaa-48da-7e4c-a481-4aa91026740a",
+        "status": "pending",
+        "pipeline": "extract",
+        "usage": {
+          "pages_total": 0,
+          "pages_processed": 0,
+          "pages_succeeded": 0,
+          "pages_failed": 0
+        },
+        "created_at": "2026-09-26T12:21:59Z",
+        "updated_at": "2026-09-26T12:21:59Z",
+        "$schema": "https://api.sarvam.ai/schemas/PublicJobBody.json"
+      },
+      "seconds": 0.14
+    },
+    {
+      "call": "get_status",
+      "kwargs": {},
+      "response": {
+        "job_id": "01a0ddaa-48da-7e4c-a481-4aa91026740a",
+        "status": "pending",
+        "pipeline": "extract",
+        "usage": {
+          "pages_total": 0,
+          "pages_processed": 0,
+          "pages_succeeded": 0,
+          "pages_failed": 0
+        },
+        "created_at": "2026-09-26T12:21:59Z",
+        "updated_at": "2026-09-26T12:21:59Z",
+        "$schema": "https://api.sarvam.ai/schemas/PublicJobBody.json"
+      },
+      "seconds": 0.06
+    },
+    {
+      "call": "get_status",
+      "kwargs": {},
+      "response": {
+        "job_id": "01a0ddaa-48da-7e4c-a481-4aa91026740a",
+        "status": "pending",
+        "pipeline": "extract",
+        "usage": {
+          "pages_total": 0,
+          "pages_processed": 0,
+          "pages_succeeded": 0,
+          "pages_failed": 0
+        },
+        "created_at": "2026-09-26T12:21:59Z",
+        "updated_at": "2026-09-26T12:21:59Z",
+        "$schema": "https://api.sarvam.ai/schemas/PublicJobBody.json"
+      },
+      "seconds": 0.05
+    },
+    {
+      "call": "get_status",
+      "kwargs": {},
+      "response": {
+        "job_id": "01a0ddaa-48da-7e4c-a481-4aa91026740a",
+        "status": "pending",
+        "pipeline": "extract",
+        "usage": {
+          "pages_total": 0,
+          "pages_processed": 0,
+          "pages_succeeded": 0,
+          "pages_failed": 0
+        },
+        "created_at": "2026-09-26T12:21:59Z",
+        "updated_at": "2026-09-26T12:21:59Z",
+        "$schema": "https://api.sarvam.ai/schemas/PublicJobBody.json"
+      },
+      "seconds": 0.06
+    },
+    {
+      "call": "get_status",
+      "kwargs": {},
+      "response": {
+        "job_id": "01a0ddaa-48da-7e4c-a481-4aa91026740a",
+        "status": "pending",
+        "pipeline": "extract",
+        "usage": {
+          "pages_total": 0,
+          "pages_processed": 0,
+          "pages_succeeded": 0,
+          "pages_failed": 0
+        },
+        "created_at": "2026-09-26T12:21:59Z",
+        "updated_at": "2026-09-26T12:22:14Z",
+        "$schema": "https://api.sarvam.ai/schemas/PublicJobBody.json"
+      },
+      "seconds": 0.15
+    },
+    {
+      "call": "get_status",
+      "kwargs": {},
+      "response": {
+        "job_id": "01a0ddaa-48da-7e4c-a481-4aa91026740a",
+        "status": "completed",
+        "pipeline": "extract",
+        "usage": {
+          "pages_total": 1,
+          "pages_processed": 1,
+          "pages_succeeded": 1,
+          "pages_failed": 0
+        },
+        "created_at": "2026-09-26T12:21:59Z",
+        "updated_at": "2026-09-26T12:22:16Z",
+        "$schema": "https://api.sarvam.ai/schemas/PublicJobBody.json"
+      },
+      "seconds": 0.1
+    },
+    {
+      "call": "get_results",
+      "kwargs": {},
+      "response": {
+        "type": "extract",
+        "job_id": "01a0ddaa-48da-7e4c-a481-4aa91026740a",
+        "status": "completed",
+        "usage": {
+          "pages_total": 1,
+          "pages_processed": 1,
+          "pages_succeeded": 1,
+          "pages_failed": 0,
+          "pages_discarded": 0
+        },
+        "result": {
+          "vendor_name": "SHREE BALAJI TRADERS",
+          "bill_date": "24/09/2026",
+          "total": 3600.0
+        },
+        "annotations": {
+          "vendor_name": {
+            "confidence": 0.9999998509885621,
+            "sources": [
+              {
+                "page_num": 1,
+                "document_id": "01a0ddaa-48db-71cb-a101-0ff18cdd8e6e",
+                "filename": "bill.jpg"
+              }
+            ]
+          },
+          "bill_date": {
+            "confidence": 1,
+            "sources": [
+              {
+                "page_num": 1,
+                "document_id": "01a0ddaa-48db-71cb-a101-0ff18cdd8e6e",
+                "filename": "bill.jpg"
+              }
+            ]
+          },
+          "total": {
+            "confidence": 0.9997497982496458,
+            "sources": [
+              {
+                "page_num": 1,
+                "document_id": "01a0ddaa-48db-71cb-a101-0ff18cdd8e6e",
+                "filename": "bill.jpg"
+              }
+            ]
+          }
+        },
+        "version": 1,
+        "source_map": {
+          "01a0ddaa-48db-71cb-a101-0ff18cdd8e6e:1": {
+            "document_id": "01a0ddaa-48db-71cb-a101-0ff18cdd8e6e",
+            "filename": "bill.jpg"
+          }
+        }
+      },
+      "seconds": 0.06
+    }
+  ]
+}

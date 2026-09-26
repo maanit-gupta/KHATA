@@ -1,0 +1,198 @@
+{
+  "image": "photo_bill.jpg",
+  "lang": "ta-IN",
+  "error": null,
+  "outcome": {
+    "status": "done",
+    "vendor_name": "SHREE BALAJI TRADERS",
+    "bill_date": "2026-09-24",
+    "total_paise": 360000,
+    "retried_in_english": false,
+    "job_ids": [
+      "01a0dda1-f551-7d95-b349-add95b0479f7"
+    ],
+    "raw": {
+      "attempts": [
+        {
+          "lang": "ta-IN",
+          "results": {
+            "type": "extract",
+            "job_id": "01a0dda1-f551-7d95-b349-add95b0479f7",
+            "status": "completed",
+            "usage": {
+              "pages_total": 1,
+              "pages_processed": 1,
+              "pages_succeeded": 1,
+              "pages_failed": 0,
+              "pages_discarded": 0
+            },
+            "result": {
+              "vendor_name": "SHREE BALAJI TRADERS",
+              "bill_date": "24/09/2026",
+              "total": 3600.0
+            },
+            "annotations": {
+              "vendor_name": {
+                "confidence": 0.9999998956919578,
+                "sources": [
+                  {
+                    "page_num": 1,
+                    "document_id": "01a0dda1-f552-714c-bd29-6909f6e0a13a",
+                    "filename": "photo_bill.jpg"
+                  }
+                ]
+              },
+              "bill_date": {
+                "confidence": 1,
+                "sources": [
+                  {
+                    "page_num": 1,
+                    "document_id": "01a0dda1-f552-714c-bd29-6909f6e0a13a",
+                    "filename": "photo_bill.jpg"
+                  }
+                ]
+              },
+              "total": {
+                "confidence": 0.999992430554206,
+                "sources": [
+                  {
+                    "page_num": 1,
+                    "document_id": "01a0dda1-f552-714c-bd29-6909f6e0a13a",
+                    "filename": "photo_bill.jpg"
+                  }
+                ]
+              }
+            },
+            "version": 1,
+            "source_map": {
+              "01a0dda1-f552-714c-bd29-6909f6e0a13a:1": {
+                "document_id": "01a0dda1-f552-714c-bd29-6909f6e0a13a",
+                "filename": "photo_bill.jpg"
+              }
+            },
+            "lang": "ta-IN"
+          },
+          "error": null
+        }
+      ]
+    },
+    "error": null
+  },
+  "sarvam_calls": 4,
+  "log": [
+    {
+      "call": "extract",
+      "kwargs": {
+        "schema": "{\"type\": \"object\", \"properties\": {\"vendor_name\": {\"type\": \"string\", \"description\": \"Name of the shop or business that issued the bill, as printed at the top\"}, \"bill_date\": {\"type\": \"string\", \"description\": \"Bill date as printed\"}, \"total\": {\"type\": \"number\", \"description\": \"Final amount payable in INR (grand total after taxes), as a number\"}}}",
+        "language": "ta-IN",
+        "output_format": "json"
+      },
+      "response": {
+        "job_id": "01a0dda1-f551-7d95-b349-add95b0479f7",
+        "status": "pending",
+        "run_id": "01a0dda1-f583-7779-9b69-5e56ad5d497e",
+        "$schema": "https://api.sarvam.ai/schemas/PublicStartJobResponse.json"
+      },
+      "seconds": 0.34
+    },
+    {
+      "call": "get_status",
+      "kwargs": {},
+      "response": {
+        "job_id": "01a0dda1-f551-7d95-b349-add95b0479f7",
+        "status": "pending",
+        "pipeline": "extract",
+        "usage": {
+          "pages_total": 0,
+          "pages_processed": 0,
+          "pages_succeeded": 0,
+          "pages_failed": 0
+        },
+        "created_at": "2026-09-26T12:12:53Z",
+        "updated_at": "2026-09-26T12:12:54Z",
+        "$schema": "https://api.sarvam.ai/schemas/PublicJobBody.json"
+      },
+      "seconds": 0.16
+    },
+    {
+      "call": "get_status",
+      "kwargs": {},
+      "response": {
+        "job_id": "01a0dda1-f551-7d95-b349-add95b0479f7",
+        "status": "completed",
+        "pipeline": "extract",
+        "usage": {
+          "pages_total": 1,
+          "pages_processed": 1,
+          "pages_succeeded": 1,
+          "pages_failed": 0
+        },
+        "created_at": "2026-09-26T12:12:53Z",
+        "updated_at": "2026-09-26T12:13:09Z",
+        "$schema": "https://api.sarvam.ai/schemas/PublicJobBody.json"
+      },
+      "seconds": 0.04
+    },
+    {
+      "call": "get_results",
+      "kwargs": {},
+      "response": {
+        "type": "extract",
+        "job_id": "01a0dda1-f551-7d95-b349-add95b0479f7",
+        "status": "completed",
+        "usage": {
+          "pages_total": 1,
+          "pages_processed": 1,
+          "pages_succeeded": 1,
+          "pages_failed": 0,
+          "pages_discarded": 0
+        },
+        "result": {
+          "vendor_name": "SHREE BALAJI TRADERS",
+          "bill_date": "24/09/2026",
+          "total": 3600.0
+        },
+        "annotations": {
+          "vendor_name": {
+            "confidence": 0.9999998956919578,
+            "sources": [
+              {
+                "page_num": 1,
+                "document_id": "01a0dda1-f552-714c-bd29-6909f6e0a13a",
+                "filename": "photo_bill.jpg"
+              }
+            ]
+          },
+          "bill_date": {
+            "confidence": 1,
+            "sources": [
+              {
+                "page_num": 1,
+                "document_id": "01a0dda1-f552-714c-bd29-6909f6e0a13a",
+                "filename": "photo_bill.jpg"
+              }
+            ]
+          },
+          "total": {
+            "confidence": 0.999992430554206,
+            "sources": [
+              {
+                "page_num": 1,
+                "document_id": "01a0dda1-f552-714c-bd29-6909f6e0a13a",
+                "filename": "photo_bill.jpg"
+              }
+            ]
+          }
+        },
+        "version": 1,
+        "source_map": {
+          "01a0dda1-f552-714c-bd29-6909f6e0a13a:1": {
+            "document_id": "01a0dda1-f552-714c-bd29-6909f6e0a13a",
+            "filename": "photo_bill.jpg"
+          }
+        }
+      },
+      "seconds": 0.05
+    }
+  ]
+}

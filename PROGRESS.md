@@ -4,7 +4,7 @@
 
 | Service | Budget | Used | Log |
 |---|---|---|---|
-| Sarvam (STT + TTS + translate + Document AI, each call counted) | 40 | 0 | — |
+| Sarvam (STT + TTS + translate + Document AI, each HTTP call counted, status polls included) | 40 | 28 | P2 diagnosis: 9 + 4 + 4 (3 extract jobs); P2 live E2E: 11 |
 | Groq | 60 | 0 | — |
 
 ## Tasks
@@ -20,3 +20,10 @@
 - [x] **P1.6 Audit trail.** `tests/test_audit.py`: create / edit / confirm / void rows with before/after and actor; staff edit shows as `another_member` to the owner; audit_log not writable by users.
 - [x] **P1.7 Error shape and retries.** `tests/test_errors.py`: error shapes on 401/404/405/409/422; Sarvam and Groq retry 429/503 at 1/2/4 s then `service_busy`; other errors don't retry; voice entry with Groq or STT busy → 503 and no entry, no party.
 - [x] **P1.8 Input validation (added by audit).** `tests/test_validation.py`: foreign `party_id` → 404 and B's balance untouched; wrong party kind → 422; non-UUID ids → 404; impossible dates → 422.
+
+### P2 Fix receipt auto-fill
+- [x] **P2.1 Reproduce.** `backend/scripts/debug_receipt.py` runs a bill through `receipt_ocr.read_receipt` (the production path) and saves every raw Sarvam response. 3 diagnosis jobs (limit 3): `tests/fixtures/live/receipt_20260926_174201_hi-IN.json`, `..._174310_ta-IN.json`, `..._174406_ta-IN_legacy_code.json`.
+- [x] **P2.2 Root cause.** Not reproducible: all three jobs, including the hackathon's own code, returned all three fields. Every item on the checklist was verified against the docs. Most likely causes, and why the fix covers them: D-011.
+- [x] **P2.3 Fix.** `app/services/receipt_ocr.py`: Extract → English retry → digitise + Groq strict-JSON fallback (`llm_router.receipt_fields`) with the number guard (`total_in_text`). D-012.
+- [x] **P2.4 Background work.** `POST /receipts` returns `{receipt_id, status: queued}`; BackgroundTask polls every 2 s, 90 s per job; `GET /receipts/{id}` reports stale jobs as failed (D-015); the frontend polls every 2 s (`useReceipt`, `refetchInterval` 2000). Tests (`tests/test_receipts.py`, 36): success, first-try failure then English success, empty date → retry, double failure, fallback success, **total not found in text → left empty**, 90 s timeout (45 polls), busy service, API upload/poll/save. **Live E2E:** `scripts/live_receipt_e2e.py` → 3/3 fields (`receipt_e2e_20260926_175219_hi-IN.json`). README status line updated.
+- [x] **P2.5 Save idempotent + leaves review queue (added by audit).** Second save → 409 `already_saved` (allowed again after Undo); a failed bill saved by hand becomes `done` and drops out of `/review`. DB-level guard: migration 002 (not applied, N-004).

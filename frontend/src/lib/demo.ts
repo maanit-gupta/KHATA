@@ -150,12 +150,17 @@ export async function demoApi<T>(path: string, init: RequestInit = {}): Promise<
       audio_b64: null, voice_note_id: 'demo', transcript_en: `(demo) ${said}` })
   }
   if (path === '/receipts') {
-    await wait(1500)
     const kind = init.body instanceof FormData ? init.body.get('kind') : 'supplier'
     const settled = init.body instanceof FormData ? init.body.get('settled') : null
     receiptKind = { kind: String(kind), settled: settled === null ? null : settled === 'true' }
-    return out({ receipt_id: 'demo-receipt', status: 'done', vendor_name: 'Shree Balaji Traders',
-      bill_date: daysAgo(2), total_paise: 188_000, error: null })
+    receiptReadyAt = Date.now() + 2500 // "reading" for a moment, like the real background job
+    return out({ receipt_id: 'demo-receipt', status: 'queued' })
+  }
+  if (seg[0] === 'receipts' && seg.length === 2 && method === 'GET') {
+    const ready = Date.now() >= receiptReadyAt
+    return out({ receipt_id: 'demo-receipt', status: ready ? 'done' : 'processing', kind: receiptKind.kind,
+      settled: receiptKind.settled, vendor_name: ready ? 'Shree Balaji Traders' : null, bill_date: ready ? daysAgo(2) : null,
+      total_paise: ready ? 188_000 : null, retried_in_english: false, error: null })
   }
   if (seg[0] === 'receipts' && seg[2] === 'save') {
     const { kind, settled } = receiptKind
@@ -171,3 +176,4 @@ export async function demoApi<T>(path: string, init: RequestInit = {}): Promise<
 }
 
 let receiptKind: { kind: string; settled: boolean | null } = { kind: 'supplier', settled: false }
+let receiptReadyAt = 0

@@ -23,7 +23,7 @@ from supabase import ClientOptions, create_client
 from app.config import get_settings
 from app.db import admin_client
 from app.main import app
-from app.services import llm_router, retry
+from app.services import llm_router, receipt_ocr, retry
 from app.services import sarvam as sarvam_service
 
 
@@ -119,6 +119,8 @@ class FakeSarvam:
         self.transcripts: list[str] = []
         self.translate_fn: Callable[[str, str], str] = lambda text, tgt: f"[{tgt}] {text}"
         self.fail: dict[str, Exception] = {}
+        self.doc_jobs: list[dict] = []
+        self.jobs: dict[str, dict] = {}
 
     def _maybe_fail(self, what: str) -> None:
         if what in self.fail:
@@ -140,6 +142,33 @@ class FakeSarvam:
         self.calls.append(("tts", text, lang, voice))
         self._maybe_fail("tts")
         return b"ID3-fake-mp3"
+
+    # --- Document AI: each *_start call consumes the next scripted job from doc_jobs ---------
+    # A job: {"statuses": [...polled in order, last repeats], "results": {...}} or {"start_error": exc}
+    def _start(self, kind: str, lang: str) -> str:
+        self.calls.append((f"doc_{kind}", lang))
+        assert self.doc_jobs, f"test did not script a Document AI {kind} job"
+        job = self.doc_jobs.pop(0)
+        if "start_error" in job:
+            raise job["start_error"]
+        job_id = f"job-{len(self.jobs) + 1}"
+        self.jobs[job_id] = {**job, "polls": list(job.get("statuses", ["pending", "completed"]))}
+        return job_id
+
+    def doc_extract_start(self, image, filename, mime, lang, schema_json):
+        return self._start("extract", lang)
+
+    def doc_digitise_start(self, image, filename, mime, lang):
+        return self._start("digitise", lang)
+
+    def doc_status(self, job_id: str) -> str:
+        self.calls.append(("doc_status", job_id))
+        polls = self.jobs[job_id]["polls"]
+        return polls.pop(0) if len(polls) > 1 else polls[0]
+
+    def doc_results(self, job_id: str) -> dict:
+        self.calls.append(("doc_results", job_id))
+        return self.jobs[job_id]["results"]
 
     def count(self, kind: str) -> int:
         return sum(1 for c in self.calls if c[0] == kind)
@@ -206,7 +235,15 @@ def fake_ai(monkeypatch):
     monkeypatch.setattr(llm_router, "groq", fg)
     sleeps: list[float] = []
     monkeypatch.setattr(retry, "sleep", sleeps.append)
-    return SimpleNamespace(sarvam=fs, groq=fg, sleeps=sleeps)
+    # Receipt polling runs on a fake clock: each sleep advances it, nothing actually waits.
+    clock = SimpleNamespace(t=0.0, polls=[])
+
+    def fake_sleep(s: float) -> None:
+        clock.polls.append(s)
+        clock.t += s
+    monkeypatch.setattr(receipt_ocr, "sleep", fake_sleep)
+    monkeypatch.setattr(receipt_ocr, "clock", lambda: clock.t)
+    return SimpleNamespace(sarvam=fs, groq=fg, sleeps=sleeps, clock=clock)
 
 
 @pytest.fixture
