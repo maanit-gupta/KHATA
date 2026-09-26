@@ -4,9 +4,7 @@ SDK retries are disabled; services/retry.py retries 429/503 at 1 s / 2 s / 4 s (
 from __future__ import annotations
 
 import base64
-import json
 import os
-import time
 from typing import Any, Callable
 
 from sarvamai import SarvamAI
@@ -71,32 +69,30 @@ class Sarvam:
             _voice_failed())
         return base64.b64decode(resp.audios[0])
 
-    def extract_receipt(self, image: bytes, filename: str, mime: str, lang: str,
-                        timeout_s: float = 60, poll_s: float = 2) -> dict:
-        """Document AI extract, polled synchronously. Returns model_dump() of the results.
-        Raises AppError on failure or timeout."""
-        failed = AppError(502, "ocr_failed", "Couldn't read that bill. Type the values below.")
+    # --- Document AI (receipts). services/receipt_ocr.py drives the job lifecycle. ---
+    def doc_extract_start(self, image: bytes, filename: str, mime: str, lang: str, schema_json: str) -> str:
         job = _call(lambda: self.client.doc_ai.extract(
-            file=[(filename, image, mime)], schema=json.dumps(RECEIPT_SCHEMA), language=lang,
-            output_format="json", request_options=NO_RETRY), failed)
-        deadline = time.monotonic() + timeout_s
-        while True:
-            st = _call(lambda: self.client.doc_ai.get_status(job.job_id, request_options=NO_RETRY), failed)
-            if st.status in ("completed", "partially_completed"):
-                break
-            if st.status in ("failed", "rejected"):
-                raise failed
-            if time.monotonic() > deadline:
-                raise AppError(504, "ocr_timeout", "Reading the bill took too long. Type the values below.")
-            time.sleep(poll_s)
-        res = _call(lambda: self.client.doc_ai.get_results(job.job_id, request_options=NO_RETRY), failed)
-        return {"job_id": job.job_id, **res.model_dump(mode="json")}
+            file=[(filename, image, mime)], schema=schema_json, language=lang,
+            output_format="json", request_options=NO_RETRY), _ocr_failed())
+        return job.job_id
+
+    def doc_digitise_start(self, image: bytes, filename: str, mime: str, lang: str) -> str:
+        job = _call(lambda: self.client.doc_ai.digitise(
+            file=[(filename, image, mime)], language=lang, output_format="md",
+            request_options=NO_RETRY), _ocr_failed())
+        return job.job_id
+
+    def doc_status(self, job_id: str) -> str:
+        st = _call(lambda: self.client.doc_ai.get_status(job_id, request_options=NO_RETRY), _ocr_failed())
+        return str(st.status)
+
+    def doc_results(self, job_id: str) -> dict:
+        res = _call(lambda: self.client.doc_ai.get_results(job_id, request_options=NO_RETRY), _ocr_failed())
+        return res.model_dump(mode="json")
 
 
-RECEIPT_SCHEMA = {"type": "object", "properties": {
-    "vendor_name": {"type": "string", "description": "Name of the shop or business that issued the bill, as printed at the top"},
-    "bill_date": {"type": "string", "description": "Bill date as printed"},
-    "total": {"type": "number", "description": "Final amount payable in INR (grand total after taxes), as a number"}}}
+def _ocr_failed() -> AppError:
+    return AppError(502, "ocr_failed", "Couldn't read that bill. Type the values below.")
 
 
 _client: Any = None

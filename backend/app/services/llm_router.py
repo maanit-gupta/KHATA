@@ -289,6 +289,43 @@ def voice_question_pipeline(audio: bytes, shop_id: str, member: dict, today_iso:
 
 
 # ---------------------------------------------------------------------------
+# 3b) Receipt fallback: OCR text -> the three bill fields (strict JSON)
+# ---------------------------------------------------------------------------
+RECEIPT_FIELDS_SCHEMA = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["vendor_name", "bill_date", "total"],
+    "properties": {
+        "vendor_name": {"type": ["string", "null"]},
+        "bill_date": {"type": ["string", "null"], "description": "As printed, e.g. 24/09/2026"},
+        "total": {"type": ["number", "null"], "description": "Grand total payable, INR"},
+    },
+}
+
+RECEIPT_SYSTEM = """You read the OCR text of one Indian shop bill and return three fields.
+- vendor_name: the business that issued the bill (usually the first line), not the customer.
+- bill_date: the bill date exactly as printed, or null.
+- total: the final amount payable (grand total / net amount after taxes and round-off), copied
+  exactly from the text as a number. Never add up items yourself. If unsure, null.
+Output only fields in the schema."""
+
+
+def receipt_fields(ocr_text: str) -> dict:
+    """Used only when Document AI Extract found no total. The caller checks the total against
+    the OCR text (number guard) before showing it."""
+    resp = _complete(
+        model=PARSE_MODEL,
+        temperature=0,
+        messages=[{"role": "system", "content": RECEIPT_SYSTEM},
+                  {"role": "user", "content": ocr_text[:12000]}],
+        response_format={"type": "json_schema",
+                         "json_schema": {"name": "receipt_fields", "strict": True,
+                                         "schema": RECEIPT_FIELDS_SCHEMA}},
+    )
+    return json.loads(resp.choices[0].message.content)
+
+
+# ---------------------------------------------------------------------------
 # 4) Insight narration — SQL computes, Groq only phrases
 # ---------------------------------------------------------------------------
 def narrate_insights(metrics: dict[str, Any]) -> str:

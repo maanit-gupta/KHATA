@@ -57,7 +57,7 @@ can be photographed instead of typed.
 |---|---|---|
 | Voice | Canned sentences, no microphone upload | Audio → Sarvam `saaras:v3` (translate to English) → Groq `parse_entry` |
 | Read-back | Shown as text | Translated to your language, number-checked, spoken by Sarvam `bulbul:v3` |
-| Bill scan | Fixed sample values | Photo → Sarvam Document AI extract (2 s polling, 60 s timeout) |
+| Bill scan | Fixed sample values | Photo → Sarvam Document AI extract in the background (2 s polling, 90 s timeout, English retry) |
 | Data | In memory, gone on reload | Supabase Postgres with row-level security per shop, audit log on every change |
 
 </details>
@@ -113,7 +113,7 @@ flowchart LR
 | Ledger, add by hand, confirm / void, parties with balances, party detail | ✅ Done |
 | Bill scan: kind, Paid/Credit, photo, editable vendor/date/total, save | ✅ Done |
 | Demo mode (`/demo`) | ✅ Done |
-| Bill auto-fill from Sarvam | ⚠️ The job completes but returned empty fields in testing; values are typed by hand for now |
+| Bill auto-fill from Sarvam | ✅ Background job (2 s polling, 90 s timeout), English retry, digitise + Groq fallback with a number guard. Verified live on a printed bill and a phone-style photo (3/3 fields). Real handwritten/faded bills not yet tested. |
 | Voice questions ("How much does Ramesh owe?"), weekly insights, review queue, settings, landing page | 🚧 Not built yet |
 
 ## 🗂️ Repo layout

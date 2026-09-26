@@ -49,8 +49,8 @@ updated as tasks close. The original Phase 0 status is kept in brackets when it 
 | Secret key only for /shops, /shops/join, Storage | §3, §10 | done | `admin_client()` used in `shops.py`, `voice.py:67`, `receipts.py:71` | P8.5 recheck |
 | 7 entry types, integer paise | §4 | done | `schema.sql`, `ledger.py:10` | P1.4 tests |
 | Balances only from `party_balances` | §4 | done | `routers/parties.py` | P1.4 tests |
-| Rupees→paise at API boundary is exact | §4, §6.5 | wrong | `round(float*100)`; accepts 3+ decimals (₹10.005 silently rounds) | P1.4 |
-| Entries editable (amount, type, party, date, note) | §4 | missing | no `PATCH /entries/{id}` | P5.2 |
+| Rupees→paise at API boundary is exact | §4, §6.5 | done [wrong] | `round(float*100)`; accepts 3+ decimals (₹10.005 silently rounds) | P1.4 |
+| Entries editable (amount, type, party, date, note) | §4 | done (API) [missing] | no `PATCH /entries/{id}` | P5.2 |
 | Every insert/update logged by trigger | §4 | done | `schema.sql` `log_entry_change`; audit_log readable via RLS (probe) | P1.6 tests |
 | Never deleted; delete = void | §4 | done | `POST /entries/{id}/void`; no delete route | — |
 | `decide_save` deterministic, thresholds 0.6/0.15/0.3, cap ₹5,000 | §5 | done | `llm_router.py:decide_save` | P3.4 tests |
@@ -65,25 +65,25 @@ updated as tasks close. The original Phase 0 status is kept in brackets when it 
 | Voice question pipeline, read-only tools, shop_id injected | §6.2 | missing | `voice_question_pipeline` exists in router but no tools_impl, no route | P4 |
 | Receipt scan: kind, Paid/Credit or Cash/Udhaar | §6.3.1-2 | done | `ScanScreen.tsx` | P7.2 visuals |
 | Receipt image in `receipts` bucket | §6.3.3 | done | `receipts.py:71` | — |
-| Document AI extract, poll 2 s, 90 s timeout | §6.3.4 | wrong | synchronous inside the request, 60 s timeout; results come back empty | P2 |
-| English retry on failure/empty total or date | §6.3.5 | missing | `retried_in_english` never set | P2.4 |
-| Failed OCR → status failed, review queue, manual entry | §6.3.5 | partial | status failed set; review queue screen missing; saving manually leaves the receipt `failed` forever (stays in queue) | P2.4, P5.1 |
+| Document AI extract, poll 2 s, 90 s timeout | §6.3.4 | done [wrong] | synchronous inside the request, 60 s timeout; results come back empty | P2 |
+| English retry on failure/empty total or date | §6.3.5 | done [missing] | `retried_in_english` never set | P2.4 |
+| Failed OCR → status failed, review queue, manual entry | §6.3.5 | done (API) [partial] | status failed set; review queue screen missing; saving manually leaves the receipt `failed` forever (stays in queue) | P2.4, P5.1 |
 | Editable vendor/date/total before save | §6.3.6 | done | `ScanScreen.tsx` form | — |
 | Kind → entry type mapping | §6.3.7 | done | `receipts.py:_entry_type` | P2 tests |
 | customer+udhaar asks for customer name | §6.3.7 | done | `receipts.py:134` | — |
 | Save rules apply to receipts | §6.3.8 | done | `receipts.py` uses `decide_save` | P2 tests |
 | `raw_extract` keeps full OCR JSON | §6.3 | done | `receipts.py:92` | — |
-| Receipt save is idempotent | (implied §4) | wrong | a double tap on Save creates two entries for one bill | P2.5 (new) |
+| Receipt save is idempotent | (implied §4) | done [wrong] | a double tap on Save creates two entries for one bill | P2.5 (new) |
 | Weekly summary card, Mon–Sun IST, cached, SQL metrics, rupees to narrate | §6.4, §9b | missing | no route, no UI | P6 |
 | API: every route in §6.5 | §6.5 | partial | see section D | P1–P6 |
 | Error shape `{error:{code,message}}` | §6.5 | partial | handlers in `errors.py`; but bad UUID/enum/date inputs reach PostgREST and come back as a 500 "Something went wrong" | P1.7, P1.8 (new) |
 | Routes and guards `/app/*` | §7 | done | `App.tsx`, `auth/guards.tsx` | — |
 | Landing page at `/` | §7 | missing | `/` redirects to `/login` (`App.tsx:35`) | P7.1 |
 | Offline overlay + RETRY | §8 | missing | fetch failure → inline message only | P8.1 |
-| 429/503 retry 1 s/2 s/4 s then "Service busy", save nothing | §8 | wrong | Sarvam: 1 retry after 1 s (`sarvam.py:_call`); Groq: SDK default 2 retries with its own backoff, no "Service busy" mapping (a Groq 429 becomes a 500) | P1.7 |
+| 429/503 retry 1 s/2 s/4 s then "Service busy", save nothing | §8 | done [wrong] | Sarvam: 1 retry after 1 s (`sarvam.py:_call`); Groq: SDK default 2 retries with its own backoff, no "Service busy" mapping (a Groq 429 becomes a 500) | P1.7 |
 | Mic permission denied → instruction screen | §8 | partial | one-line inline error | P3.3 |
 | Private buckets, `{shop_id}/{uuid}.{ext}` | §9 | done | probe: both buckets `public=False`; paths in `voice.py:66`, `receipts.py:70` | — |
-| Signed URLs 10 min | §9 | missing | no `/media` route | P5.4 |
+| Signed URLs 10 min | §9 | done (API) [missing] | no `/media` route | P5.4 |
 | Asia/Kolkata everywhere | §9b | done | `ledger.py:today_ist`; grep finds no `utcnow`/`date.today` | P1.5 test |
 | Default TTS voice per language; `varun` hidden | §9b | done | `constants.py` | P5.3 |
 | Settings voice sample "Ramesh owes you 250 rupees." | §9b | missing | — | P5.3 |
@@ -91,7 +91,7 @@ updated as tasks close. The original Phase 0 status is kept in brackets when it 
 | Clarify answer join `first + " " + answer` | §9b | missing | — | P3.2 |
 | `purchase_paid` receipt links supplier party; expense vendor → note | §9b | done | `receipts.py:128-157` | P2 tests |
 | Python 3.12 pinned | §9b | done | `runtime.txt`, `render.yaml` | — |
-| Tests create/delete throwaway users | §9b | wrong | cleanup breaks once an entry exists (section A) | P1.1 |
+| Tests create/delete throwaway users | §9b | done [wrong] | cleanup breaks once an entry exists (section A) | P1.1 |
 | JWKS verification, no JWT secret | §10 | done | `auth.py` | — |
 | `.env.example` files | §10 | done | both exist | — |
 | Acceptance tests §12 (8 scenarios) | §12 | missing | none automated except isolation (partial) | P1–P3, P4 |
@@ -106,26 +106,26 @@ updated as tasks close. The original Phase 0 status is kept in brackets when it 
 | PATCH /me | `me.py:update_me` | done | |
 | POST /shops | `shops.py:create_shop` | done | returns 201 |
 | POST /shops/join | `shops.py:join_shop` | done | 404 `bad_invite_code` |
-| GET /parties | `parties.py:list_parties` | partial | `kind` not validated (bad value → 500); `q` matches display_name only |
-| GET /parties/{id} | `parties.py:get_party` | partial | non-UUID id → 500 |
-| PATCH /parties/{id} | — | missing | P5.1 |
-| POST /parties/{id}/merge | — | missing | P5.1 |
-| GET /entries | `entries.py:list_entries` | partial | `status` not validated (→ 500) |
-| POST /entries | `entries.py:create_entry` | wrong | accepts another shop's `party_id` (FK check ignores RLS, so a cross-tenant reference is stored); party kind not checked against type; `occurred_on` not validated (→ 500); float rounding |
-| GET /entries/{id} | — | missing | P5.2 |
-| PATCH /entries/{id} | — | missing | P5.2 |
+| GET /parties | `parties.py:list_parties` | done [partial] | `kind` not validated (bad value → 500); `q` matches display_name only |
+| GET /parties/{id} | `parties.py:get_party` | done [partial] | non-UUID id → 500 |
+| PATCH /parties/{id} | `parties.py:edit_party` | done [missing] | P5.1 |
+| POST /parties/{id}/merge | `parties.py:merge_party` | done [missing] | P5.1 |
+| GET /entries | `entries.py:list_entries` | done [partial] | `status` not validated (→ 500) |
+| POST /entries | `entries.py:create_entry` | done [wrong] | accepts another shop's `party_id` (FK check ignores RLS, so a cross-tenant reference is stored); party kind not checked against type; `occurred_on` not validated (→ 500); float rounding |
+| GET /entries/{id} | `entries.py:get_entry` | done [missing] | P5.2 |
+| PATCH /entries/{id} | `entries.py:edit_entry` | done [missing] | P5.2 |
 | POST /entries/{id}/confirm | `entries.py:confirm_entry` | done | |
 | POST /entries/{id}/void | `entries.py:void_entry` | done | |
 | POST /voice/entry | `voice.py:voice_entry` | partial | no clarify join, no size/MIME limit, Groq errors → 500 |
 | POST /voice/entry/resolve | — | missing | P3.1 |
 | POST /voice/ask | — | missing | P4 |
-| POST /receipts | `receipts.py:create_receipt` | wrong | synchronous OCR, returns the full receipt, not `{receipt_id}` + BackgroundTask |
+| POST /receipts | `receipts.py:create_receipt` | done [wrong] | synchronous OCR, returns the full receipt, not `{receipt_id}` + BackgroundTask |
 | GET /receipts/{id} | `receipts.py:get_receipt` | done | |
-| POST /receipts/{id}/save | `receipts.py:save_receipt` | partial | not idempotent; leaves failed receipts in the queue |
+| POST /receipts/{id}/save | `receipts.py:save_receipt` | done [partial] | not idempotent; leaves failed receipts in the queue |
 | GET /insights/weekly | — | missing | P6 |
-| POST /tts | — | missing | P5.3 |
-| GET /review | — | missing | P5.1 |
-| GET /media/{bucket}/{id} | — | missing | P5.4 |
+| POST /tts | `tts.py` | done [missing] | P5.3 |
+| GET /review | `review.py` | done [missing] | P5.1 |
+| GET /media/{bucket}/{id} | `media.py` | done [missing] | P5.4 |
 
 ## E. DESIGN.md screens (§6–§7)
 

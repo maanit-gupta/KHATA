@@ -1,0 +1,293 @@
+{
+  "image": "printed_bill.png",
+  "lang": "hi-IN",
+  "error": null,
+  "outcome": {
+    "status": "done",
+    "vendor_name": "SHREE BALAJI TRADERS",
+    "bill_date": "2026-09-24",
+    "total_paise": 360000,
+    "retried_in_english": false,
+    "job_ids": [
+      "01a0dda0-ee83-7b40-b07b-b137453243b2"
+    ],
+    "raw": {
+      "attempts": [
+        {
+          "lang": "hi-IN",
+          "results": {
+            "type": "extract",
+            "job_id": "01a0dda0-ee83-7b40-b07b-b137453243b2",
+            "status": "completed",
+            "usage": {
+              "pages_total": 1,
+              "pages_processed": 1,
+              "pages_succeeded": 1,
+              "pages_failed": 0,
+              "pages_discarded": 0
+            },
+            "result": {
+              "vendor_name": "SHREE BALAJI TRADERS",
+              "bill_date": "24/09/2026",
+              "total": 3600.0
+            },
+            "annotations": {
+              "vendor_name": {
+                "confidence": 0.9999999105930781,
+                "sources": [
+                  {
+                    "page_num": 1,
+                    "document_id": "01a0dda0-ee83-7e89-9c5d-558bacef2287",
+                    "filename": "printed_bill.png"
+                  }
+                ]
+              },
+              "bill_date": {
+                "confidence": 1,
+                "sources": [
+                  {
+                    "page_num": 1,
+                    "document_id": "01a0dda0-ee83-7e89-9c5d-558bacef2287",
+                    "filename": "printed_bill.png"
+                  }
+                ]
+              },
+              "total": {
+                "confidence": 0.9999186992079655,
+                "sources": [
+                  {
+                    "page_num": 1,
+                    "document_id": "01a0dda0-ee83-7e89-9c5d-558bacef2287",
+                    "filename": "printed_bill.png"
+                  }
+                ]
+              }
+            },
+            "version": 1,
+            "source_map": {
+              "01a0dda0-ee83-7e89-9c5d-558bacef2287:1": {
+                "document_id": "01a0dda0-ee83-7e89-9c5d-558bacef2287",
+                "filename": "printed_bill.png"
+              }
+            },
+            "lang": "hi-IN"
+          },
+          "error": null
+        }
+      ]
+    },
+    "error": null
+  },
+  "sarvam_calls": 9,
+  "log": [
+    {
+      "call": "extract",
+      "kwargs": {
+        "schema": "{\"type\": \"object\", \"properties\": {\"vendor_name\": {\"type\": \"string\", \"description\": \"Name of the shop or business that issued the bill, as printed at the top\"}, \"bill_date\": {\"type\": \"string\", \"description\": \"Bill date as printed\"}, \"total\": {\"type\": \"number\", \"description\": \"Final amount payable in INR (grand total after taxes), as a number\"}}}",
+        "language": "hi-IN",
+        "output_format": "json"
+      },
+      "response": {
+        "job_id": "01a0dda0-ee83-7b40-b07b-b137453243b2",
+        "status": "pending",
+        "run_id": "01a0dda0-eebb-748b-8f3c-cbc17b90faf1",
+        "$schema": "https://api.sarvam.ai/schemas/PublicStartJobResponse.json"
+      },
+      "seconds": 0.39
+    },
+    {
+      "call": "get_status",
+      "kwargs": {},
+      "response": {
+        "job_id": "01a0dda0-ee83-7b40-b07b-b137453243b2",
+        "status": "pending",
+        "pipeline": "extract",
+        "usage": {
+          "pages_total": 0,
+          "pages_processed": 0,
+          "pages_succeeded": 0,
+          "pages_failed": 0
+        },
+        "created_at": "2026-09-26T12:11:46Z",
+        "updated_at": "2026-09-26T12:11:46Z",
+        "$schema": "https://api.sarvam.ai/schemas/PublicJobBody.json"
+      },
+      "seconds": 0.05
+    },
+    {
+      "call": "get_status",
+      "kwargs": {},
+      "response": {
+        "job_id": "01a0dda0-ee83-7b40-b07b-b137453243b2",
+        "status": "pending",
+        "pipeline": "extract",
+        "usage": {
+          "pages_total": 0,
+          "pages_processed": 0,
+          "pages_succeeded": 0,
+          "pages_failed": 0
+        },
+        "created_at": "2026-09-26T12:11:46Z",
+        "updated_at": "2026-09-26T12:11:46Z",
+        "$schema": "https://api.sarvam.ai/schemas/PublicJobBody.json"
+      },
+      "seconds": 0.18
+    },
+    {
+      "call": "get_status",
+      "kwargs": {},
+      "response": {
+        "job_id": "01a0dda0-ee83-7b40-b07b-b137453243b2",
+        "status": "pending",
+        "pipeline": "extract",
+        "usage": {
+          "pages_total": 0,
+          "pages_processed": 0,
+          "pages_succeeded": 0,
+          "pages_failed": 0
+        },
+        "created_at": "2026-09-26T12:11:46Z",
+        "updated_at": "2026-09-26T12:11:46Z",
+        "$schema": "https://api.sarvam.ai/schemas/PublicJobBody.json"
+      },
+      "seconds": 0.06
+    },
+    {
+      "call": "get_status",
+      "kwargs": {},
+      "response": {
+        "job_id": "01a0dda0-ee83-7b40-b07b-b137453243b2",
+        "status": "pending",
+        "pipeline": "extract",
+        "usage": {
+          "pages_total": 0,
+          "pages_processed": 0,
+          "pages_succeeded": 0,
+          "pages_failed": 0
+        },
+        "created_at": "2026-09-26T12:11:46Z",
+        "updated_at": "2026-09-26T12:11:46Z",
+        "$schema": "https://api.sarvam.ai/schemas/PublicJobBody.json"
+      },
+      "seconds": 0.04
+    },
+    {
+      "call": "get_status",
+      "kwargs": {},
+      "response": {
+        "job_id": "01a0dda0-ee83-7b40-b07b-b137453243b2",
+        "status": "pending",
+        "pipeline": "extract",
+        "usage": {
+          "pages_total": 0,
+          "pages_processed": 0,
+          "pages_succeeded": 0,
+          "pages_failed": 0
+        },
+        "created_at": "2026-09-26T12:11:46Z",
+        "updated_at": "2026-09-26T12:11:46Z",
+        "$schema": "https://api.sarvam.ai/schemas/PublicJobBody.json"
+      },
+      "seconds": 0.09
+    },
+    {
+      "call": "get_status",
+      "kwargs": {},
+      "response": {
+        "job_id": "01a0dda0-ee83-7b40-b07b-b137453243b2",
+        "status": "pending",
+        "pipeline": "extract",
+        "usage": {
+          "pages_total": 0,
+          "pages_processed": 0,
+          "pages_succeeded": 0,
+          "pages_failed": 0
+        },
+        "created_at": "2026-09-26T12:11:46Z",
+        "updated_at": "2026-09-26T12:11:46Z",
+        "$schema": "https://api.sarvam.ai/schemas/PublicJobBody.json"
+      },
+      "seconds": 0.08
+    },
+    {
+      "call": "get_status",
+      "kwargs": {},
+      "response": {
+        "job_id": "01a0dda0-ee83-7b40-b07b-b137453243b2",
+        "status": "completed",
+        "pipeline": "extract",
+        "usage": {
+          "pages_total": 1,
+          "pages_processed": 1,
+          "pages_succeeded": 1,
+          "pages_failed": 0
+        },
+        "created_at": "2026-09-26T12:11:46Z",
+        "updated_at": "2026-09-26T12:12:01Z",
+        "$schema": "https://api.sarvam.ai/schemas/PublicJobBody.json"
+      },
+      "seconds": 0.05
+    },
+    {
+      "call": "get_results",
+      "kwargs": {},
+      "response": {
+        "type": "extract",
+        "job_id": "01a0dda0-ee83-7b40-b07b-b137453243b2",
+        "status": "completed",
+        "usage": {
+          "pages_total": 1,
+          "pages_processed": 1,
+          "pages_succeeded": 1,
+          "pages_failed": 0,
+          "pages_discarded": 0
+        },
+        "result": {
+          "vendor_name": "SHREE BALAJI TRADERS",
+          "bill_date": "24/09/2026",
+          "total": 3600.0
+        },
+        "annotations": {
+          "vendor_name": {
+            "confidence": 0.9999999105930781,
+            "sources": [
+              {
+                "page_num": 1,
+                "document_id": "01a0dda0-ee83-7e89-9c5d-558bacef2287",
+                "filename": "printed_bill.png"
+              }
+            ]
+          },
+          "bill_date": {
+            "confidence": 1,
+            "sources": [
+              {
+                "page_num": 1,
+                "document_id": "01a0dda0-ee83-7e89-9c5d-558bacef2287",
+                "filename": "printed_bill.png"
+              }
+            ]
+          },
+          "total": {
+            "confidence": 0.9999186992079655,
+            "sources": [
+              {
+                "page_num": 1,
+                "document_id": "01a0dda0-ee83-7e89-9c5d-558bacef2287",
+                "filename": "printed_bill.png"
+              }
+            ]
+          }
+        },
+        "version": 1,
+        "source_map": {
+          "01a0dda0-ee83-7e89-9c5d-558bacef2287:1": {
+            "document_id": "01a0dda0-ee83-7e89-9c5d-558bacef2287",
+            "filename": "printed_bill.png"
+          }
+        }
+      },
+      "seconds": 0.05
+    }
+  ]
+}
