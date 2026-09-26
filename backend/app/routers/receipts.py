@@ -9,15 +9,15 @@ from datetime import datetime
 from typing import Literal
 
 from fastapi import APIRouter, Depends, File, Form, UploadFile
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from ..auth import CurrentUser, current_user
 from ..db import admin_client, user_client
 from ..errors import AppError
-from ..ledger import now_iso, require_membership, today_ist
+from ..ledger import check_uuid, now_iso, require_membership, rupees_to_paise, today_ist
 from ..services import llm_router
 from .entries import fetch_entry
-from .voice import sarvam
+from ..services.sarvam import client as sarvam
 
 log = logging.getLogger("khata")
 router = APIRouter()
@@ -46,6 +46,7 @@ def _entry_type(kind: str, settled: bool | None) -> str:
 
 
 def _receipt(db, receipt_id: str) -> dict:
+    check_uuid(receipt_id, "receipt")
     rows = db.table("receipts").select("*").eq("id", receipt_id).limit(1).execute().data
     if not rows:
         raise AppError(404, "not_found", "That receipt does not exist.")
@@ -112,7 +113,7 @@ def get_receipt(receipt_id: str, user: CurrentUser = Depends(current_user)):
 class SaveReceipt(BaseModel):
     vendor_name: str | None = None
     bill_date: str | None = None
-    total_rupees: float = Field(gt=0)
+    total_rupees: float
     customer_name: str | None = None
 
 
@@ -124,7 +125,7 @@ def save_receipt(receipt_id: str, body: SaveReceipt, user: CurrentUser = Depends
     rec = _receipt(db, receipt_id)
     etype = _entry_type(rec["kind"], rec["settled"])
     vendor = (body.vendor_name or "").strip() or None
-    amount_paise = round(body.total_rupees * 100)
+    amount_paise = rupees_to_paise(body.total_rupees)
     occurred_on = _parse_date(body.bill_date) or today_ist().isoformat()
 
     # Party: vendor for supplier bills (paid too, per §9b), customer name for udhaar, none otherwise.
