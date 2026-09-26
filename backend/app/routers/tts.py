@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from ..auth import CurrentUser, current_user
 from ..ledger import require_membership
+from ..ratelimit import rate_limit
 from ..speech import speak
 
 router = APIRouter()
@@ -18,7 +19,7 @@ class TtsBody(BaseModel):
     text: str = Field(min_length=1, max_length=2500)
 
 
-@router.post("/tts")
+@router.post("/tts", dependencies=[Depends(rate_limit("tts"))])
 def tts(body: TtsBody, user: CurrentUser = Depends(current_user)):
     m = require_membership(user)
     text, audio_b64 = speak(body.text.strip(), m, strict=True)

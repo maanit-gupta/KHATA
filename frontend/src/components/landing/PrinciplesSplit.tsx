@@ -1,7 +1,8 @@
 import { t } from '../../strings/en'
 import { PixelSquares } from '../ui/PixelSquares'
 import { Row } from '../ui/Row'
-import { RevealHeading, useSectionReveal } from './reveal'
+import { RevealHeading } from './reveal'
+import { useSectionReveal } from '../../hooks/useSectionReveal'
 
 const L = t.landing
 

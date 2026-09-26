@@ -26,7 +26,7 @@ export function AboutScreen() {
         <ol className="grid gap-px bg-ink app:grid-cols-2">
           {a.flows.map((f) => (
             <li key={f.title} className="flex flex-col gap-4 bg-paper p-6 app:p-8">
-              <p className="t-label text-muted">{f.label}</p>
+              <p className="t-label">{f.label}</p>
               <h3 className="t-h3">{f.title}</h3>
               <ol className="flex flex-col gap-3">
                 {f.steps.map((s, i) => (

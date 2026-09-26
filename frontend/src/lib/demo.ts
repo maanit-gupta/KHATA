@@ -95,6 +95,7 @@ function addWithRules(e: Partial<Entry> & Pick<Entry, 'type' | 'amount_paise'>, 
 // Voice notes in demo mode rotate through a few canned sentences (no speech service is called).
 const VOICE_SAMPLES: [string, EntryType, number][] = [
   ['Ramesh', 'credit_given', 250], ['Lakshmi', 'payment_received', 500], ['Suresh', 'credit_given', 6000],
+  ['Rakesh', 'credit_given', 100], // close to Ramesh: "Did you mean Ramesh?"
 ]
 let voiceTurn = 0
 const TYPE_WORDS: Record<EntryType, string> = {
@@ -114,7 +115,32 @@ export async function demoApi<T>(path: string, init: RequestInit = {}): Promise<
   const out = (v: unknown) => structuredClone(v) as T
   const entry = (id: string) => entries.find((e) => e.id === id)
 
-  if (path === '/me') return out(ME)
+  if (path === '/me' && method === 'GET') return out(ME)
+  if (seg[0] === 'entries' && seg.length === 2) {
+    const e = entry(seg[1])
+    if (!e) throw Object.assign(new Error('That entry does not exist.'), { status: 404, code: 'not_found' })
+    const hist = (history[e.id] ??= [{ action: 'create', at: e.created_at, by: 'you',
+      changes: [{ field: 'amount_paise', old: null, new: e.amount_paise }, { field: 'type', old: null, new: e.type }] }])
+    if (method === 'PATCH') {
+      const changes: { field: string; old: unknown; new: unknown }[] = []
+      const set = <K extends keyof Entry>(k: K, v: Entry[K], label: string = k) => {
+        if (e[k] !== v) { changes.push({ field: label, old: e[k], new: v }); e[k] = v }
+      }
+      if (body.type) set('type', body.type)
+      if (body.amount_rupees !== undefined) set('amount_paise', Math.round(body.amount_rupees * 100))
+      if (body.occurred_on) set('occurred_on', body.occurred_on)
+      if (body.note !== undefined) set('note', body.note || null)
+      if (body.party_name) {
+        const before = withParty(e).party_name
+        const kind: P['kind'] = ['purchase_credit', 'purchase_paid', 'payment_made'].includes(e.type) ? 'supplier' : 'customer'
+        e.party_id = partyFor(body.party_name, kind).id
+        changes.push({ field: 'party', old: before, new: body.party_name })
+      }
+      hist.push({ action: 'edit', at: new Date().toISOString(), by: 'you', changes })
+      return out(withParty(e))
+    }
+    return out({ entry: withParty(e), history: hist })
+  }
   if (seg[0] === 'entries' && method === 'GET') {
     return out({ entries: [...entries].sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 20).map(withParty) })
   }
@@ -127,9 +153,11 @@ export async function demoApi<T>(path: string, init: RequestInit = {}): Promise<
     return out(withParty(e))
   }
   if (seg[0] === 'entries' && (seg[2] === 'confirm' || seg[2] === 'void')) {
-    const e = entry(seg[1])
-    if (e) e.status = seg[2] === 'confirm' ? 'confirmed' : 'voided'
-    return out(withParty(e!))
+    const e = entry(seg[1])!
+    const next = seg[2] === 'confirm' ? 'confirmed' : 'voided'
+    ;(history[e.id] ??= []).push({ action: seg[2], at: new Date().toISOString(), by: 'you', changes: [{ field: 'status', old: e.status, new: next }] })
+    e.status = next
+    return out(withParty(e))
   }
   if (seg[0] === 'parties' && seg.length === 1) {
     return out({ parties: parties.map(balance).sort((a, b) => a.display_name.localeCompare(b.display_name)) })
@@ -144,10 +172,62 @@ export async function demoApi<T>(path: string, init: RequestInit = {}): Promise<
   if (path === '/voice/entry') {
     await wait(900)
     const [name, type, rupees] = VOICE_SAMPLES[voiceTurn++ % VOICE_SAMPLES.length]
-    const r = addWithRules({ type, amount_paise: rupees * 100, party_id: byName(name), source: 'voice' }, false)
     const said = `${name}, ${rupees} rupees ${TYPE_WORDS[type]}`
+    if (name === 'Rakesh') {
+      const e = makeEntry({ type, amount_paise: rupees * 100, party_id: byName('Ramesh'), source: 'voice', status: 'pending',
+        review_reason: 'Did you mean Ramesh?', voice_note_id: `demo-vn-${seq}` })
+      entries.push(e)
+      pendingResolve[e.voice_note_id!] = { id: e.id, name }
+      return out({ decision: 'confirm', entry: withParty(e), suggestion: 'Ramesh', speech_text: `${said}. Did you mean Ramesh?`,
+        audio_b64: null, voice_note_id: e.voice_note_id, transcript_en: `(demo) ${name} ${rupees} udhaar` })
+    }
+    const r = addWithRules({ type, amount_paise: rupees * 100, party_id: byName(name), source: 'voice' }, false)
     return out({ ...r, speech_text: r.decision === 'auto' ? `${said}, saved.` : `${said}. Tap confirm to save.`,
       audio_b64: null, voice_note_id: 'demo', transcript_en: `(demo) ${said}` })
+  }
+  if (path === '/voice/entry/resolve') {
+    const pend = pendingResolve[body.voice_note_id]
+    const e = pend && entry(pend.id)
+    if (!e || e.status !== 'pending') throw Object.assign(new Error('This entry was already confirmed or voided.'), { status: 409, code: 'already_resolved' })
+    if (body.choice === 'create_new') e.party_id = partyFor(pend.name, 'customer').id
+    e.status = 'confirmed'; e.auto_saved = true; e.review_reason = null
+    const w = withParty(e)
+    return out({ decision: 'auto', entry: w, suggestion: null, speech_text: `${w.party_name}, ${e.amount_paise / 100} rupees udhaar, saved.`,
+      audio_b64: null, voice_note_id: body.voice_note_id, transcript_en: null })
+  }
+  if (path === '/voice/ask') {
+    await wait(900)
+    const top = parties.map(balance).filter((p) => p.balance_paise > 0).sort((a, b) => b.balance_paise - a.balance_paise)[0]
+    const text = top ? `${top.display_name} owes you ${top.balance_paise / 100} rupees, the most of anyone.` : 'Nobody owes you anything right now.'
+    return out({ text: `(demo) ${text}`, audio_b64: null, question_en: '(demo) Who owes me the most?' })
+  }
+  if (path === '/review') {
+    const rows = [
+      ...entries.filter((e) => e.status === 'pending').map((e) => ({ item: 'entry', id: e.id, reason: e.review_reason, created_at: e.created_at, detail: withParty(e) })),
+      ...parties.filter((p) => p.needs_review).map((p) => ({ item: 'party', id: p.id, reason: 'new party created automatically', created_at: new Date().toISOString(), detail: balance(p) })),
+    ]
+    return out({ rows, count: rows.length })
+  }
+  if (path === '/insights/weekly') return out(weekly())
+  if (path === '/tts') return out({ text: body.text, audio_b64: null })
+  if (seg[0] === 'media') {
+    throw Object.assign(new Error('Recordings and bill photos are not kept in the demo.'), { status: 404, code: 'demo' })
+  }
+  if (path === '/me' && method === 'PATCH') {
+    Object.assign(ME.membership!, body)
+    return out(ME.membership)
+  }
+  if (seg[0] === 'parties' && seg.length === 2 && method === 'PATCH') {
+    const p = parties.find((x) => x.id === seg[1])!
+    if (typeof body.display_name === 'string') p.display_name = body.display_name
+    if (typeof body.needs_review === 'boolean') p.needs_review = body.needs_review
+    return out(balance(p))
+  }
+  if (seg[0] === 'parties' && seg[2] === 'merge') {
+    const into = parties.find((x) => x.id === body.into_party_id)!
+    entries.filter((e) => e.party_id === seg[1]).forEach((e) => { e.party_id = into.id })
+    parties.splice(parties.findIndex((x) => x.id === seg[1]), 1)
+    return out(balance(into))
   }
   if (path === '/receipts') {
     const kind = init.body instanceof FormData ? init.body.get('kind') : 'supplier'
@@ -173,6 +253,35 @@ export async function demoApi<T>(path: string, init: RequestInit = {}): Promise<
     party?.created ?? false))
   }
   throw Object.assign(new Error('This part of the app is not in the demo.'), { status: 404, code: 'demo' })
+}
+
+type History = { action: string; at: string; by: 'you'; changes: { field: string; old: unknown; new: unknown }[] }
+const history: Record<string, History[]> = {}
+const pendingResolve: Record<string, { id: string; name: string }> = {}
+
+/** GET /insights/weekly for the demo: same shape as the API, computed from the sample book. */
+function weekly() {
+  const now = new Date()
+  const monday = new Date(now); monday.setDate(now.getDate() - ((now.getDay() + 6) % 7))
+  const iso = (d: Date) => d.toISOString().slice(0, 10)
+  const ws = iso(monday)
+  const prev = new Date(monday); prev.setDate(monday.getDate() - 7)
+  const sum = (from: string, to: string) => {
+    const rows = entries.filter((e) => e.status === 'confirmed' && e.occurred_on >= from && e.occurred_on <= to)
+    const t = (type: EntryType) => rows.filter((e) => e.type === type).reduce((a, e) => a + e.amount_paise, 0)
+    return { cash_sales_paise: t('cash_sale'), credit_given_paise: t('credit_given'), collected_paise: t('payment_received'),
+      expenses_paise: t('expense'), purchases_paise: t('purchase_credit') + t('purchase_paid'), supplier_paid_paise: t('payment_made'),
+      entry_count: rows.length }
+  }
+  const lastEnd = new Date(monday); lastEnd.setDate(monday.getDate() - 1)
+  const debtors = parties.map(balance).filter((p) => p.balance_paise > 0).sort((a, b) => b.balance_paise - a.balance_paise).slice(0, 3)
+  const tw = sum(ws, iso(now))
+  const text = `(demo) So far this week: ${tw.cash_sales_paise / 100} rupees in cash sales and ${tw.credit_given_paise / 100} rupees given on credit.`
+  return { week_start: ws, week_end: iso(new Date(monday.getTime() + 6 * 86_400_000)), today: iso(now), this_week: tw,
+    last_week: sum(iso(prev), iso(lastEnd)),
+    top_debtors: debtors.map((d) => ({ party_id: d.party_id, name: d.display_name, balance_paise: d.balance_paise,
+      days_since_last_activity: d.last_activity ? Math.round((Date.now() - Date.parse(d.last_activity)) / 86_400_000) : null })),
+    narration: text, narration_en: text }
 }
 
 let receiptKind: { kind: string; settled: boolean | null } = { kind: 'supplier', settled: false }

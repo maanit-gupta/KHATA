@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import { t } from '../strings/en'
+import { setOffline } from './connectivity'
 import { demoApi, isDemo } from './demo'
 
 const API_URL = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
@@ -30,7 +31,8 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   try {
     resp = await fetch(`${API_URL}${path}`, { ...init, headers })
   } catch {
-    throw new ApiError(0, 'offline', t.auth.errors.generic)
+    setOffline(true) // the request never reached the server: show the offline overlay
+    throw new ApiError(0, 'offline', t.offline.network)
   }
   const body = await resp.json().catch(() => null)
   if (!resp.ok) {
@@ -43,3 +45,13 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
 export type Membership = { shop_id: string; role: 'owner' | 'staff'; lang: string; tts_voice: string | null; joined_at: string }
 export type Shop = { id: string; name: string; default_lang: string; invite_code: string; created_at: string }
 export type Me = { user: { id: string; email: string | null; name: string | null }; membership: Membership | null; shop: Shop | null }
+
+/** GET /health: true when the API answers. Used by the offline overlay's RETRY. */
+export async function ping(): Promise<boolean> {
+  try {
+    const r = await fetch(`${API_URL}/health`, { cache: 'no-store' })
+    return r.ok
+  } catch {
+    return false
+  }
+}

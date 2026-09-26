@@ -1,11 +1,20 @@
+import { useEffect, useState } from 'react'
 import { Navigate, Outlet } from 'react-router'
 import { t } from '../strings/en'
-import { useMe, useSession } from './session'
+import { useMe, useSession } from './hooks'
+
+const WAKING_AFTER_MS = 3000 // the free Render instance sleeps; its first answer can be slow
 
 function Loading() {
+  const [slow, setSlow] = useState(false)
+  useEffect(() => {
+    const id = window.setTimeout(() => setSlow(true), WAKING_AFTER_MS)
+    return () => window.clearTimeout(id)
+  }, [])
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-bone">
-      <p className="t-label text-muted" role="status">{t.errors.loading}</p>
+    <div className="flex min-h-dvh flex-col items-center justify-center gap-3 bg-bone gutter-x text-center" role="status" aria-live="polite">
+      <p className="t-label">{slow ? t.errors.waking : t.errors.loading}</p>
+      {slow && <p className="max-w-sm t-body">{t.errors.wakingHelp}</p>}
     </div>
   )
 }

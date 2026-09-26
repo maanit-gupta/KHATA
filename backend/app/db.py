@@ -16,17 +16,21 @@ from supabase import Client, ClientOptions, create_client
 from .config import get_settings
 
 PG_UNIQUE_VIOLATION = "23505"
+# A hung database call should become a clean error, not a stuck worker (default is 120 s).
+DB_TIMEOUT_S = 30
 
 
 def user_client(token: str) -> Client:
     s = get_settings()
     return create_client(s.supabase_url, s.supabase_publishable_key,
                          ClientOptions(headers={"Authorization": f"Bearer {token}"},
-                                       auto_refresh_token=False, persist_session=False))
+                                       auto_refresh_token=False, persist_session=False,
+                                       postgrest_client_timeout=DB_TIMEOUT_S))
 
 
 @lru_cache
 def admin_client() -> Client:
     s = get_settings()
     return create_client(s.supabase_url, s.supabase_secret_key,
-                         ClientOptions(auto_refresh_token=False, persist_session=False))
+                         ClientOptions(auto_refresh_token=False, persist_session=False,
+                                       postgrest_client_timeout=DB_TIMEOUT_S))

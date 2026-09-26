@@ -9,6 +9,9 @@ cp .env.example .env.local   # Supabase URL + PUBLISHABLE key, API URL
 npm run dev                  # http://localhost:5173 (backend on :8000)
 npm run build                # type-check + production bundle
 npm run lint
+npm run typecheck            # src/ and e2e/
+npx playwright install chromium   # once
+npm run test:e2e             # Playwright against a mocked API (e2e/mock.ts), headless
 ```
 
 - `/dev/ui`: every component and state (dev server only; not in production builds).
