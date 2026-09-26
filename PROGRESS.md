@@ -55,4 +55,17 @@
 
 ### P7 Landing page and design fidelity
 - [x] **P7.1 Landing page** at `/` (lazy-loaded): `components/landing/{Hero, HowItWorks, PrinciplesSplit, SayItYourWay, BuiltBy, Footer}`; transparent header whose chips switch to `mix-blend-mode: difference` over `[data-dark]` sections; landing motion (15% IntersectionObserver, heading muted→ink 600ms, line draw 900ms + 120ms stagger, text wipe, square pop, sections rise 40px over 700ms, cyan split panel slides in from the right, hero squares 0.3x parallax). Six "Say it your way" lines with `TODO: native-speaker check`; BuiltBy only if `public/founder.jpg` exists. Fixed a hackathon bug found on the way: in-app links to `/demo` hit the 404 route. E2E: `e2e/landing.spec.ts`. Screens: `artifacts/screens/P7.1-landing/`.
+- [x] **P7.2 Design pass.** Every screen walked against DESIGN §1–§6. Grep proof: no `rounded`/`shadow`/bold/icon-library use; gradients only in the RibbedGlass texture that DESIGN specifies; `--muted` only on pre-reveal headings, the "Loading…" status, and a card label on /about. Fixes (before = hackathon commit 4b86e02 shot against the same mock, after = now; `artifacts/screens/P7.2-design/<scene>-{before,after}-{390,1280}.png` for ledger, scan, parties, review, settings, entry, home, recording):
+  - `●` glyph in the hold button → the square (§1 no icons); the hold label is "LISTENING… RELEASE TO SEND" with the 30 s hairline turning white at 25 s (§6.4).
+  - Entry-row dates and the "Heard" transcript were `--muted` → ink (§2 guard).
+  - Voice panel: HOLD TO ASK and SCAN A BILL → added; "Add by hand" moved beside Recent (D-023).
+  - Extra SCAN nav chip removed (§5: LEDGER / PARTIES / REVIEW / SETTINGS); REVIEW count square wired.
+  - Empty ledger copy + PixelSquares (§6.13).
+  - Scan: tall kind cards, big chips, preview with ribbed reading strip, dark form, SAVE ENTRY → (§6.7).
+  - Parties: search + CUSTOMERS/SUPPLIERS chips (§6.8); party detail balance in Amount style (§6.9).
+  - Ledger rows open Entry edit (§6.3); pending/did-you-mean/clarify cards (§6.6).
+  - `/` was a redirect to /login → the landing page (§7); hero squares kept clear of text (D-033).
+  - Page transitions, 900px split, MENU overlay, undo hairline, focus rings: checked, already correct.
 - [x] **P7.3 Reduced motion.** Playwright with `prefers-reduced-motion: reduce`: no SVG ripple `<animate>` and no filter on the ribs (control test shows the ripple exists normally), section headings already revealed, recording countdown still `30s linear`. Screens: `artifacts/screens/P7.3-reduced-motion/`.
+
+- E2E totals now: 25 passed (`npx playwright test`, 27 s).
