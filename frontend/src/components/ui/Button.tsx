@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, ReactNode } from 'react'
+import type { ButtonHTMLAttributes, ReactNode, Ref } from 'react'
 import { Link } from 'react-router'
 import { t } from '../../strings/en'
 
@@ -19,6 +19,7 @@ type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: Variant
   arrow?: boolean
   children: ReactNode
+  ref?: Ref<HTMLButtonElement>
 }
 
 function Arrow() {

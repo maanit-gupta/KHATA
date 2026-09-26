@@ -167,6 +167,40 @@ def c_voice_entry(client, w, fake_sarvam, fake_groq):
     assert r["entry"]["shop_id"] == w.a["shop_id"]
 
 
+def c_resolve(client, w):
+    r = client.post("/voice/entry/resolve", json={"voice_note_id": w.b_note["id"], "choice": "create_new"},
+                    headers=w.a["headers"])
+    _is_404(r)
+    # A clarify answer can't be joined onto B's recording either.
+    r = client.post("/voice/entry", files={"audio": ("n.webm", AUDIO, "audio/webm")},
+                    data={"answer_to": w.b_note["id"]}, headers=w.a["headers"])
+    _is_404(r)
+
+
+def c_voice_ask(client, w, fake_sarvam, fake_groq):
+    """The model asks for B's party by name and then by B's party id: the tools (A's RLS client,
+    A's shop_id injected) return nothing of B's."""
+    from tests.conftest import tool_call
+    fake_sarvam.transcripts.append("How much does Mahesh owe?")   # Mahesh exists only in shop B
+    seen = []
+
+    def handler(kwargs):
+        results = [m["content"] for m in kwargs["messages"] if m["role"] == "tool"]
+        seen.extend(results[len(seen):])
+        if not results:
+            return fake_groq.tools(tool_call("find_party", {"name": "Mahesh"}))
+        if len(results) == 1:
+            return fake_groq.tools(tool_call("get_party_balance", {"party_id": w.b_party}),
+                                   tool_call("top_debtors", {}), tool_call("list_entries", {"party_id": w.b_party}))
+        return fake_groq.text("I could not find Mahesh.")
+    fake_groq.handler = handler
+    r = post_audio(client, "/voice/ask", w.a["headers"])
+    assert r.status_code == 200, r.text
+    _no_b(w, seen)
+    assert '"matches": []' in seen[0] and '"error": "no such party"' in seen[1]
+    assert "Mahesh" not in seen[2] and '"entries": []' in seen[3]
+
+
 def c_get_receipt(client, w):
     _is_404(client.get(f"/receipts/{w.b_receipt['id']}", headers=w.a["headers"]))
 
@@ -210,6 +244,8 @@ CASES = {
     ("POST", "/entries/{entry_id}/confirm"): c_confirm_entry,
     ("POST", "/entries/{entry_id}/void"): c_void_entry,
     ("POST", "/voice/entry"): c_voice_entry,
+    ("POST", "/voice/entry/resolve"): c_resolve,
+    ("POST", "/voice/ask"): c_voice_ask,
     ("GET", "/receipts/{receipt_id}"): c_get_receipt,
     ("POST", "/receipts/{receipt_id}/save"): c_save_receipt,
     ("GET", "/review"): c_review,

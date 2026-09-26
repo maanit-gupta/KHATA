@@ -1,180 +1,221 @@
-import { motion } from 'framer-motion'
-import { useRef, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router'
-import { Button } from '../components/ui/Button'
+import { EntryList } from '../components/EntryList'
+import { MicBlocked } from '../components/MicBlocked'
+import { WeeklyCard } from '../components/WeeklyCard'
+import { Button, ButtonLink } from '../components/ui/Button'
 import { SegmentChip } from '../components/ui/Chip'
 import { Field } from '../components/ui/Field'
 import { H2 } from '../components/ui/H2'
+import { HoldButton } from '../components/ui/HoldButton'
+import { PixelSquares } from '../components/ui/PixelSquares'
+import { PlayButton } from '../components/ui/PlayButton'
 import { RibbedGlass } from '../components/ui/RibbedGlass'
-import { Row } from '../components/ui/Row'
+import { StatusSquare } from '../components/ui/StatusSquare'
 import { Toast, ToastAction } from '../components/ui/Toast'
-import { useHoldRecorder } from '../hooks/useHoldRecorder'
 import { api } from '../lib/api'
 import {
-  confirmEntry, ENTRY_TYPES, NO_PARTY_TYPES, playB64, useEntries, useLedgerMutation, voidEntry,
+  confirmEntry, ENTRY_TYPES, NO_PARTY_TYPES, playB64, reasonText, useEntries, useLedgerMutation, voidEntry,
   type Entry, type EntryType, type VoiceResult,
 } from '../lib/ledger'
 import { formatPaise } from '../lib/money'
+import { resolveVoiceEntry, uploadVoiceEntry, uploadVoiceQuestion, type Answer } from '../lib/voice'
 import { t } from '../strings/en'
 
-const UNDO_MS = 5000
+const UNDO_MS = 5000 // DESIGN.md §6.5
 
+type Result = { kind: 'entry'; data: VoiceResult } | { kind: 'answer'; data: Answer } | null
 type ToastState = { kind: 'saved'; entry: Entry } | { kind: 'text'; text: string } | null
-
-function uploadVoice(blob: Blob) {
-  const fd = new FormData()
-  const ext = blob.type.includes('mp4') ? 'mp4' : 'webm'
-  fd.append('audio', blob, `note.${ext}`)
-  return api<VoiceResult>('/voice/entry', { method: 'POST', body: fd })
-}
 
 export function LedgerScreen() {
   const entries = useEntries()
-  const [result, setResult] = useState<VoiceResult | null>(null)
+  const [result, setResult] = useState<Result>(null)
   const [error, setError] = useState<string | null>(null)
   const [toast, setToast] = useState<ToastState>(null)
   const [showForm, setShowForm] = useState(false)
+  const [micBlocked, setMicBlocked] = useState(false)
+  const [recording, setRecording] = useState<'add' | 'ask' | 'answer' | null>(null)
   const toastTimer = useRef<number | undefined>(undefined)
 
-  function showToast(next: ToastState, ms: number) {
+  const showToast = useCallback((next: ToastState, ms: number) => {
     window.clearTimeout(toastTimer.current)
     setToast(next)
     toastTimer.current = window.setTimeout(() => setToast(null), ms)
-  }
+  }, [])
+  useEffect(() => () => window.clearTimeout(toastTimer.current), [])
 
-  const voice = useLedgerMutation(uploadVoice)
+  const addVoice = useLedgerMutation(uploadVoiceEntry)
+  const resolve = useLedgerMutation(resolveVoiceEntry)
+  const ask = useLedgerMutation(uploadVoiceQuestion)
   const confirm = useLedgerMutation(confirmEntry)
   const undo = useLedgerMutation(voidEntry)
 
-  const rec = useHoldRecorder({
-    onAudio: (blob) => {
-      setError(null)
-      voice.mutate(blob, {
-        onSuccess: (r) => {
-          setResult(r)
-          playB64(r.audio_b64)
-          if (r.decision === 'auto' && r.entry) showToast({ kind: 'saved', entry: r.entry }, UNDO_MS)
-        },
-        onError: (e) => setError(e.message),
-      })
-    },
-    onTooShort: () => showToast({ kind: 'text', text: t.ledger.tooShort }, 2500),
-    onDenied: () => setError(t.ledger.micDenied),
-  })
+  function onEntryResult(r: VoiceResult) {
+    setResult({ kind: 'entry', data: r })
+    playB64(r.audio_b64)
+    if (r.decision === 'auto' && r.entry) showToast({ kind: 'saved', entry: r.entry }, UNDO_MS)
+  }
+  const onError = (e: Error) => setError(e.message)
+  const tooShort = useCallback(() => showToast({ kind: 'text', text: t.ledger.tooShort }, 2500), [showToast])
+  const denied = useCallback(() => setMicBlocked(true), [])
 
-  const recording = rec.phase === 'recording'
-  const label = recording ? t.ledger.listening : voice.isPending ? t.ledger.working : t.ledger.holdToAdd
+  function sendEntry(blob: Blob, answerTo?: string) {
+    setError(null)
+    addVoice.mutate({ blob, answerTo }, { onSuccess: onEntryResult, onError })
+  }
+  function sendQuestion(blob: Blob) {
+    setError(null)
+    ask.mutate(blob, {
+      onSuccess: (a) => { setResult({ kind: 'answer', data: a }); playB64(a.audio_b64) },
+      onError,
+    })
+  }
+
+  const busy = addVoice.isPending || ask.isPending || resolve.isPending
+  const onRecAdd = useCallback((r: boolean) => setRecording((c) => (r ? 'add' : c === 'add' ? null : c)), [])
+  const onRecAsk = useCallback((r: boolean) => setRecording((c) => (r ? 'ask' : c === 'ask' ? null : c)), [])
+  const onRecAnswer = useCallback((r: boolean) => setRecording((c) => (r ? 'answer' : c === 'answer' ? null : c)), [])
 
   return (
     <div className="grid app:grid-cols-3">
       <div className="app:sticky app:top-14 app:self-start">
         <RibbedGlass intensity={recording ? 'live' : 'idle'} className="flex min-h-[38vh] flex-col justify-end gap-3 gutter-x py-8">
-          <button
-            type="button"
-            disabled={voice.isPending}
-            onPointerDown={(e) => { e.preventDefault(); rec.start() }}
-            onPointerUp={rec.stop}
-            onPointerLeave={() => recording && rec.stop()}
-            onContextMenu={(e) => e.preventDefault()}
-            className="relative flex min-h-[72px] w-full select-none items-center justify-between bg-ink px-4 t-label-lg text-paper touch-none disabled:opacity-60"
-          >
-            {recording && (
-              <motion.span
-                aria-hidden
-                className="absolute inset-x-0 top-0 h-px origin-left bg-cyan"
-                initial={{ scaleX: 0 }}
-                animate={{ scaleX: 1 }}
-                transition={{ duration: rec.maxMs / 1000, ease: 'linear' }}
-              />
-            )}
-            <span>{label}</span>
-            <span aria-hidden>●</span>
-          </button>
-          <Button variant="outline" onClick={() => setShowForm((s) => !s)}>
-            {showForm ? t.ledger.closeForm : t.ledger.addByHand}
-          </Button>
+          <HoldButton label={t.ledger.holdToAdd} busy={busy} onAudio={(b) => sendEntry(b)}
+            onTooShort={tooShort} onDenied={denied} onRecordingChange={onRecAdd} />
+          <HoldButton label={t.ledger.holdToAsk} variant="inverse" busy={busy} onAudio={sendQuestion}
+            onTooShort={tooShort} onDenied={denied} onRecordingChange={onRecAsk} />
+          <ButtonLink to="/app/scan">{t.ledger.scanBill}</ButtonLink>
         </RibbedGlass>
       </div>
 
       <div className="flex flex-col gap-10 gutter-x py-10 app:col-span-2">
         {error && <p className="t-body-lg" role="alert">{error}</p>}
-        {showForm && <ManualForm onDone={(entry) => { setShowForm(false); showToast({ kind: 'saved', entry }, UNDO_MS) }} />}
-        {result && (
-          <ResultCard
-            result={result}
-            confirming={confirm.isPending}
-            onConfirm={(id) => confirm.mutate(id, { onSuccess: (entry) => setResult({ ...result, decision: 'auto', entry }) })}
-            onVoid={(id) => undo.mutate(id, { onSuccess: () => setResult(null) })}
-          />
-        )}
+        <div aria-live="polite">
+          {result?.kind === 'entry' && (
+            <EntryResult
+              result={result.data}
+              busy={busy || confirm.isPending}
+              onResolve={(choice) => resolve.mutate({ voiceNoteId: result.data.voice_note_id, choice }, { onSuccess: onEntryResult, onError })}
+              onConfirm={(id) => confirm.mutate(id, {
+                onSuccess: (entry) => setResult({ kind: 'entry', data: { ...result.data, decision: 'auto', entry } }),
+                onError,
+              })}
+              answer={(b) => sendEntry(b, result.data.voice_note_id)}
+              onTooShort={tooShort} onDenied={denied} onRecordingChange={onRecAnswer}
+            />
+          )}
+          {result?.kind === 'answer' && <AnswerCard answer={result.data} />}
+        </div>
+
+        <WeeklyCard />
+
         <section>
-          <H2 lines={t.ledger.recent} className="mb-6" />
-          <EntryList entries={entries.data} empty={t.ledger.empty} />
+          <div className="mb-6 flex items-end justify-between gap-4">
+            <H2 lines={t.ledger.recent} />
+            <Button variant="text" onClick={() => setShowForm((s) => !s)} aria-expanded={showForm}>
+              {showForm ? t.ledger.closeForm : t.ledger.addByHand}
+            </Button>
+          </div>
+          {showForm && <ManualForm onDone={(entry) => { setShowForm(false); showToast({ kind: 'saved', entry }, UNDO_MS) }} />}
+          {entries.error && <p className="t-body-lg" role="alert">{entries.error.message}</p>}
+          <EntryList entries={entries.data} revealKey="ledger-recent" empty={<EmptyLedger />} />
         </section>
       </div>
 
       {toast?.kind === 'saved' && (
         <Toast
           countdownMs={UNDO_MS}
-          action={<ToastAction onClick={() => undo.mutate(toast.entry.id, { onSuccess: () => { setResult(null); showToast({ kind: 'text', text: t.toast.undone }, 1500) } })}>{t.toast.undo}</ToastAction>}
+          action={<ToastAction onClick={() => undo.mutate(toast.entry.id, {
+            onSuccess: () => { setResult(null); showToast({ kind: 'text', text: t.toast.undone }, 1500) },
+            onError,
+          })}>{t.toast.undo}</ToastAction>}
         >
-          {t.ledger.saved(toast.entry.party_name ?? t.entryTypes[toast.entry.type], formatPaise(toast.entry.amount_paise))}
+          {t.ledger.saved(toast.entry.party_name ?? toast.entry.note ?? t.entryTypes[toast.entry.type], formatPaise(toast.entry.amount_paise))}
         </Toast>
       )}
       {toast?.kind === 'text' && <Toast>{toast.text}</Toast>}
+      {micBlocked && <MicBlocked onClose={() => setMicBlocked(false)} onRetry={() => {
+        setMicBlocked(false)
+        navigator.mediaDevices?.getUserMedia({ audio: true })
+          .then((s) => s.getTracks().forEach((tr) => tr.stop()))
+          .catch(() => setMicBlocked(true))
+      }} />}
     </div>
   )
 }
 
-function ResultCard({ result, confirming, onConfirm, onVoid }:
-  { result: VoiceResult; confirming: boolean; onConfirm: (id: string) => void; onVoid: (id: string) => void }) {
+function EmptyLedger() {
+  return (
+    <div className="relative min-h-[240px] border-t border-ink pt-6">
+      <p className="relative z-10 max-w-md t-body-lg">{t.ledger.empty[0]}<br />{t.ledger.empty[1]}</p>
+      <PixelSquares seed={42} count={7} className="top-24" />
+    </div>
+  )
+}
+
+type EntryResultProps = {
+  result: VoiceResult
+  busy: boolean
+  onResolve: (choice: 'use_suggested' | 'create_new') => void
+  onConfirm: (id: string) => void
+  answer: (blob: Blob) => void
+  onTooShort: () => void
+  onDenied: () => void
+  onRecordingChange: (recording: boolean) => void
+}
+
+/** DESIGN.md §6.3 entry card + §6.6 pending / did-you-mean / clarify cards. */
+function EntryResult({ result, busy, onResolve, onConfirm, answer, onTooShort, onDenied, onRecordingChange }: EntryResultProps) {
+  const navigate = useNavigate()
   const e = result.entry
   return (
-    <section className="border-t border-ink pt-6">
+    <section className="border-t border-ink pt-6" data-testid="result-card">
       {result.transcript_en && <p className="mb-4 t-body text-muted">{t.ledger.heard(result.transcript_en)}</p>}
       {e ? (
         <>
-          <p className="t-amount">{formatPaise(e.amount_paise)}</p>
-          <p className="t-h3">{e.party_name ?? t.ledger.noParty}</p>
-          <p className="mt-2 t-label">{t.entryTypes[e.type]} · {t.status[e.status]}</p>
+          <p className="flex items-center gap-3 t-label">
+            <StatusSquare status={e.status} />
+            {t.entryTypes[e.type]}
+            {e.auto_saved && e.status === 'confirmed' && <span>· {t.status.auto}</span>}
+          </p>
+          <p className="mt-3 t-amount">{formatPaise(e.amount_paise)}</p>
+          <p className="t-h3">{e.party_name ?? e.note ?? t.ledger.noParty}</p>
           {e.status === 'pending' && (
             <div className="mt-6 flex flex-col gap-3">
-              {e.review_reason && <p className="t-body-lg">{e.review_reason}</p>}
-              <Button disabled={confirming} onClick={() => onConfirm(e.id)}>{t.ledger.confirm}</Button>
-              <Button variant="outline" onClick={() => onVoid(e.id)}>{t.ledger.voidIt}</Button>
+              <p className="t-body-lg">{result.suggestion ? t.ledger.didYouMean(result.suggestion) : reasonText(e.review_reason)}</p>
+              {result.suggestion ? (
+                <div className="grid grid-cols-2 gap-2">
+                  <SegmentChip selected disabled={busy} onClick={() => onResolve('use_suggested')}>{t.ledger.yesName(result.suggestion)}</SegmentChip>
+                  <SegmentChip selected={false} disabled={busy} onClick={() => onResolve('create_new')}>{t.ledger.noNewPerson}</SegmentChip>
+                </div>
+              ) : (
+                <>
+                  <Button disabled={busy} onClick={() => onConfirm(e.id)}>{t.ledger.confirm}</Button>
+                  <Button variant="outline" onClick={() => navigate(`/app/entries/${e.id}`)}>{t.ledger.edit}</Button>
+                </>
+              )}
             </div>
           )}
         </>
       ) : (
-        <p className="t-body-lg">{result.speech_text}</p>
+        <div className="flex flex-col gap-4">
+          <p className="t-body-lg">{result.speech_text}</p>
+          <HoldButton label={t.ledger.holdToAnswer} variant="inverse" busy={busy} onAudio={answer}
+            onTooShort={onTooShort} onDenied={onDenied} onRecordingChange={onRecordingChange} />
+        </div>
       )}
-      {result.audio_b64 && (
-        <button type="button" className="mt-4 min-h-12 t-label underline" onClick={() => playB64(result.audio_b64)}>{t.ledger.play}</button>
-      )}
+      {e && <p className="mt-4 t-body">{result.speech_text}</p>}
+      {result.audio_b64 && <div className="mt-4"><PlayButton onClick={() => playB64(result.audio_b64)} /></div>}
     </section>
   )
 }
 
-export function EntryList({ entries, empty }: { entries: Entry[] | undefined; empty: string }) {
-  const navigate = useNavigate()
-  if (!entries) return null
-  if (!entries.length) return <p className="t-body-lg">{empty}</p>
+function AnswerCard({ answer }: { answer: Answer }) {
   return (
-    <div className="border-b border-ink">
-      {entries.map((e, i) => (
-        <Row
-          key={e.id}
-          index={i}
-          status={e.status}
-          auto={e.auto_saved}
-          right={<span className="t-body-lg tabular-nums">{formatPaise(e.amount_paise)}</span>}
-          onClick={e.party_id ? () => navigate(`/app/parties/${e.party_id}`) : undefined}
-        >
-          {e.party_name ?? t.entryTypes[e.type]}
-          <span className="block t-label text-muted">{t.entryTypes[e.type]} · {e.occurred_on}</span>
-        </Row>
-      ))}
-    </div>
+    <section className="flex items-start gap-4 border-t border-ink pt-6" data-testid="answer-card">
+      {answer.audio_b64 && <PlayButton onClick={() => playB64(answer.audio_b64)} />}
+      <p className="t-body-lg">{answer.text}</p>
+    </section>
   )
 }
 
@@ -195,16 +236,16 @@ function ManualForm({ onDone }: { onDone: (e: Entry) => void }) {
   }
 
   return (
-    <form onSubmit={submit} className="flex flex-col gap-6 border-t border-ink pt-6">
-      <div>
-        <p className="mb-2 t-field-label">{t.ledger.type}</p>
+    <form onSubmit={submit} className="mb-8 flex flex-col gap-6 border-t border-ink pt-6">
+      <fieldset>
+        <legend className="mb-2 t-field-label">{t.ledger.type}</legend>
         <div className="flex flex-wrap gap-2">
           {ENTRY_TYPES.map((k) => (
             <SegmentChip key={k} selected={type === k} onClick={() => setType(k)}>{t.entryTypes[k]}</SegmentChip>
           ))}
         </div>
-      </div>
-      <Field label={t.ledger.amount} required inputMode="decimal" type="number" min="1" step="any" value={amount} onChange={(e) => setAmount(e.target.value)} />
+      </fieldset>
+      <Field label={t.ledger.amount} required inputMode="decimal" type="number" min="0.01" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} />
       {needsParty && <Field label={t.ledger.partyName} required value={party} onChange={(e) => setParty(e.target.value)} />}
       <Field label={t.ledger.note} value={note} onChange={(e) => setNote(e.target.value)} />
       {save.error && <p className="t-body" role="alert">{save.error.message}</p>}

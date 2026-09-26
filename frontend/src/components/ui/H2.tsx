@@ -6,8 +6,7 @@ export function H2({ lines, as: Tag = 'h2', className = '' }:
   return (
     <Tag className={`t-h2 ${className}`}>
       {lines[0]}
-      <br />
-      {lines[1]}
+      {lines[1] !== undefined && <><br />{lines[1]}</>}
     </Tag>
   )
 }

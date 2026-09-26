@@ -21,14 +21,38 @@ AUDIO_TYPES = {"audio/webm": "webm", "audio/mp4": "mp4", "audio/x-m4a": "m4a", "
 IMAGE_TYPES = {"image/jpeg": "jpg", "image/png": "png"}
 
 
+def sniff(data: bytes) -> str | None:
+    """MIME from magic bytes, for uploads whose Content-Type is missing or generic
+    (some browsers send a Blob as application/octet-stream)."""
+    if data[:4] == b"\x1aE\xdf\xa3":
+        return "audio/webm"
+    if data[4:8] == b"ftyp":
+        return "audio/mp4"
+    if data[:4] == b"OggS":
+        return "audio/ogg"
+    if data[:4] == b"RIFF" and data[8:12] == b"WAVE":
+        return "audio/wav"
+    if data[:3] == b"ID3" or data[:2] in (b"\xff\xfb", b"\xff\xf3", b"\xff\xf2"):
+        return "audio/mpeg"
+    if data[:8] == b"\x89PNG\r\n\x1a\n":
+        return "image/png"
+    if data[:3] == b"\xff\xd8\xff":
+        return "image/jpeg"
+    return None
+
+
 def read_upload(file: UploadFile, allowed: dict[str, str], wrong_type: AppError) -> tuple[bytes, str, str]:
-    """Returns (bytes, mime, ext). Enforces the MIME allow-list and the 10 MB cap server-side."""
-    mime = (file.content_type or "").split(";")[0].strip().lower()
-    if mime not in allowed:
-        raise wrong_type
+    """Returns (bytes, mime, ext). Enforces the MIME allow-list and the 10 MB cap server-side.
+    A declared type outside the list is refused; a missing/generic one is sniffed from the bytes."""
+    declared = (file.content_type or "").split(";")[0].strip().lower()
     data = file.file.read(MAX_UPLOAD_BYTES + 1)
     if len(data) > MAX_UPLOAD_BYTES:
         raise AppError(413, "too_large", "That file is over 10 MB. Use a smaller photo or a shorter recording.")
+    mime = declared if declared in allowed else None
+    if mime is None and declared in ("", "application/octet-stream"):
+        mime = sniff(data)
+    if mime not in allowed:
+        raise wrong_type
     return data, mime, allowed[mime]
 
 

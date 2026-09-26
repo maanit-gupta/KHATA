@@ -1,106 +1,237 @@
-"""POST /voice/entry: audio -> Storage -> STT (translate) -> parse_entry -> find_party -> decide_save."""
+"""Voice entry (CLAUDE.md §5, §6.1, §9b).
+
+POST /voice/entry: audio → Storage + voice_notes → STT (translate) → parse_entry → find_party →
+  decide_save. An optional `answer_to` (the voice_note_id of a clarify question) joins the
+  earlier transcript with this one, "first + ' ' + answer", and parses the joined text (§9b).
+POST /voice/entry/resolve: the "Did you mean X?" card. use_suggested / create_new re-runs
+  decide_save with that party and applies the amount rule again.
+Every read-back is composed in English here and localized with the number guard (speech.speak)."""
 
 from __future__ import annotations
 
+import base64
 import logging
-import uuid
+from dataclasses import asdict
+from typing import Literal
 
-from fastapi import APIRouter, Depends, File, UploadFile
+from fastapi import APIRouter, Depends, File, Form, UploadFile
+from pydantic import BaseModel, ConfigDict
 
 from ..auth import CurrentUser, current_user
-from ..db import admin_client, user_client
+from ..qa_tools import make_tools
+from ..db import user_client
 from ..errors import AppError
-from ..ledger import (NO_PARTY_TYPES, now_iso, party_kind_for, require_membership, today_ist)
+from ..ledger import (NO_PARTY_TYPES, check_uuid, not_found, now_iso, parse_iso_date, party_kind_for,
+                      require_membership, today_ist)
 from ..services import llm_router
 from ..services.sarvam import client as sarvam
 from ..speech import speak
-from .entries import fetch_entry
+from ..storage import AUDIO_TYPES, read_upload, upload
+from .entries import fetch_entry, get_or_create_party
 
 log = logging.getLogger("khata")
 router = APIRouter()
 
-TYPE_WORDS = {"credit_given": "udhaar given", "payment_received": "payment received",
+MIN_AUDIO_BYTES = 1000  # an empty WebM container is ~100 bytes: the button was tapped, not held
+TYPE_WORDS = {"credit_given": "udhaar", "payment_received": "payment received",
               "cash_sale": "cash sale", "purchase_credit": "purchase on credit",
               "purchase_paid": "purchase paid", "payment_made": "payment made", "expense": "expense"}
-EXT = {"audio/webm": "webm", "audio/mp4": "mp4", "audio/mpeg": "mp3", "audio/wav": "wav",
-       "audio/x-wav": "wav", "audio/ogg": "ogg"}
+NOT_HEARD = "I did not hear anything. Please say it again."
 
 
-def _rupees(paise: int) -> str:
-    return str(paise // 100) if paise % 100 == 0 else f"{paise / 100:.2f}"
+def spoken_rupees(paise: int) -> str:
+    """Digits with Indian grouping (Bulbul reads "10,000" better than "10000"; the number guard
+    ignores commas)."""
+    rupees, p = divmod(paise, 100)
+    s = str(rupees)
+    if len(s) > 3:
+        head, tail = s[:-3], s[-3:]
+        groups = []
+        while len(head) > 2:
+            groups.insert(0, head[-2:])
+            head = head[:-2]
+        s = ",".join([head, *groups, tail]) if head else ",".join([*groups, tail])
+    return f"{s}.{p:02d}" if p else s
 
 
-def _speak(text_en: str, member: dict) -> tuple[str, str | None]:
-    return speak(text_en, member)
+def read_back(parsed: llm_router.ParsedEntry, name: str | None, action: str, suggestion: str | None) -> str:
+    who = f"{name}, " if name else ""
+    said = f"{who}{spoken_rupees(parsed.amount_paise)} rupees {TYPE_WORDS[parsed.type]}"
+    if action == "auto":
+        return f"{said}, saved."
+    if suggestion:
+        return f"{said}. Did you mean {suggestion}?"
+    return f"{said}. Tap confirm to save."
+
+
+def _read_audio(audio: UploadFile) -> tuple[bytes, str, str]:
+    data, mime, ext = read_upload(audio, AUDIO_TYPES, AppError(
+        422, "bad_audio", "That recording format isn't supported. Hold the button and speak again."))
+    if len(data) < MIN_AUDIO_BYTES:
+        raise AppError(422, "empty_audio", "Hold the button while speaking.")
+    return data, mime, ext
+
+
+def _voice_note(db, note_id: str, shop_id: str) -> dict:
+    check_uuid(note_id, "recording")
+    rows = db.table("voice_notes").select("*").eq("id", note_id).limit(1).execute().data
+    if not rows or rows[0]["shop_id"] != shop_id or rows[0]["purpose"] != "entry":
+        raise not_found("recording")
+    return rows[0]
+
+
+def _respond(m: dict, note_id: str, speech_en: str, decision: str, entry: dict | None = None,
+             suggestion: str | None = None, transcript: str | None = None) -> dict:
+    speech, audio_b64 = speak(speech_en, m)
+    return {"decision": decision, "entry": entry, "suggestion": suggestion, "speech_text": speech,
+            "audio_b64": audio_b64, "voice_note_id": note_id, "transcript_en": transcript}
+
+
+def _save(db, m: dict, user: CurrentUser, parsed: llm_router.ParsedEntry, matches: list[dict],
+          note_id: str) -> tuple[llm_router.SaveDecision, dict | None, str | None]:
+    """Apply a SaveDecision: insert the entry (confirmed+auto or pending). Returns (decision,
+    entry, suggested party id). Clarify inserts nothing."""
+    d = llm_router.decide_save(parsed, matches)
+    if d.action == "clarify":
+        return d, None, None
+    kind = party_kind_for(parsed.type)
+    party_id, suggested_id = d.party_id, None
+    if d.party_action == "ask_did_you_mean":
+        # Pending against the suggestion; the card resolves it (YES / NO, NEW PERSON), and a plain
+        # CONFIRM in the review queue means yes. No new party is created yet (§12).
+        party_id = suggested_id = matches[0]["party_id"]
+    elif d.party_action == "create_flagged":
+        party_id = get_or_create_party(db, m["shop_id"], parsed.party_name, kind, needs_review=True)
+    auto = d.action == "auto"
+    row = {"shop_id": m["shop_id"], "party_id": party_id, "type": parsed.type,
+           "amount_paise": parsed.amount_paise, "note": parsed.note,
+           "occurred_on": parsed.occurred_on or today_ist().isoformat(),
+           "status": "confirmed" if auto else "pending", "source": "voice", "auto_saved": auto,
+           "review_reason": d.reason, "voice_note_id": note_id, "created_by": user.id}
+    if auto:
+        row.update(confirmed_by=user.id, confirmed_at=now_iso())
+    entry = fetch_entry(db, db.table("entries").insert(row).execute().data[0]["id"])
+    return d, entry, suggested_id
+
+
+def _valid_date(iso: str | None) -> str | None:
+    """The model's occurred_on is a hint; drop anything that isn't a real ISO date."""
+    try:
+        return parse_iso_date(iso)
+    except AppError:
+        return None
 
 
 @router.post("/voice/entry")
-def voice_entry(audio: UploadFile = File(...), user: CurrentUser = Depends(current_user)):
+def voice_entry(audio: UploadFile = File(...), answer_to: str | None = Form(None),
+                user: CurrentUser = Depends(current_user)):
     m = require_membership(user)
     shop_id, lang = m["shop_id"], m["lang"]
     db = user_client(user.token)
-    data = audio.file.read()
-    if len(data) < 1000:  # an empty WebM container is ~100 bytes
-        raise AppError(422, "empty_audio", "Hold the button while speaking.")
-    mime = (audio.content_type or "audio/webm").split(";")[0]
-    ext = EXT.get(mime, "webm")
-    path = f"{shop_id}/{uuid.uuid4()}.{ext}"
-    admin_client().storage.from_("voice").upload(path, data, {"content-type": mime})
+    data, mime, ext = _read_audio(audio)
+    first = _voice_note(db, answer_to, shop_id) if answer_to else None
+    if first and ((first.get("parsed") or {}).get("decision") or {}).get("action", "clarify") != "clarify":
+        raise AppError(409, "already_answered", "That question was already answered. Hold ADD to start a new entry.")
+
+    path = upload("voice", shop_id, data, mime, ext)
     note = db.table("voice_notes").insert({"shop_id": shop_id, "audio_path": path, "spoken_lang": lang,
                                            "purpose": "entry", "created_by": user.id}).execute().data[0]
 
     transcript = sarvam().transcribe_to_english(data, lang, mime, f"note.{ext}")
-    today = today_ist().isoformat()
-    parsed = llm_router.parse_entry(transcript, today) if transcript else None
-    db.table("voice_notes").update({"transcript_en": transcript,
-                                    "parsed": parsed.__dict__ if parsed else None}).eq("id", note["id"]).execute()
+    text = transcript
+    if first:  # §9b: join the question's transcript with the answer and parse them together
+        first_text = (first.get("parsed") or {}).get("input_text") or first.get("transcript_en") or ""
+        text = f"{first_text} {transcript}".strip()
+    parsed = llm_router.parse_entry(text, today_ist().isoformat()) if text else None
+    if parsed:
+        parsed.occurred_on = _valid_date(parsed.occurred_on)
+        if parsed.party_name:
+            parsed.party_name = parsed.party_name.strip()
 
-    base = {"voice_note_id": note["id"], "transcript_en": transcript}
-    if parsed is None:
-        speech, audio_b64 = _speak("I did not hear anything. Please try again.", m)
-        return {**base, "decision": "clarify", "entry": None, "suggestion": None,
-                "speech_text": speech, "audio_b64": audio_b64}
-
-    kind = party_kind_for(parsed.type)
-    matches = []
-    if parsed.party_name and parsed.type not in NO_PARTY_TYPES:
+    kind = party_kind_for(parsed.type) if parsed else None
+    matches: list[dict] = []
+    if parsed and not parsed.needs_clarification and parsed.party_name and parsed.type not in NO_PARTY_TYPES:
         matches = db.rpc("find_party", {"p_shop": shop_id, "p_query": parsed.party_name,
                                         "p_kind": kind}).execute().data or []
-    d = llm_router.decide_save(parsed, matches)
 
-    if d.action == "clarify":
-        speech, audio_b64 = _speak(d.reason or "Please say that again.", m)
-        return {**base, "decision": "clarify", "entry": None, "suggestion": None,
-                "speech_text": speech, "audio_b64": audio_b64}
-
-    party_id = d.party_id
-    if d.party_action == "ask_did_you_mean":
-        party_id = matches[0]["party_id"]  # pending with the suggestion; CONFIRM = yes
-    elif d.party_action == "create_flagged":
-        name = parsed.party_name.strip()
-        party_id = db.table("parties").insert({"shop_id": shop_id, "kind": kind, "display_name": name,
-                                               "name_latin": name.lower(), "needs_review": True}
-                                              ).execute().data[0]["id"]
-
-    auto = d.action == "auto"
-    row = {"shop_id": shop_id, "party_id": party_id, "type": parsed.type,
-           "amount_paise": parsed.amount_paise, "note": parsed.note,
-           "occurred_on": parsed.occurred_on or today, "status": "confirmed" if auto else "pending",
-           "source": "voice", "auto_saved": auto, "review_reason": d.reason,
-           "voice_note_id": note["id"], "created_by": user.id}
-    if auto:
-        row.update(confirmed_by=user.id, confirmed_at=now_iso())
-    entry = fetch_entry(db, db.table("entries").insert(row).execute().data[0]["id"])
-
-    name = parsed.party_name if d.party_action == "ask_did_you_mean" else entry.get("party_name")
-    who = f"{name}, " if name else ""
-    said = f"{who}{_rupees(parsed.amount_paise)} rupees {TYPE_WORDS[parsed.type]}"
-    if auto:
-        speech_en = f"{said}, saved."
-    elif d.party_action == "ask_did_you_mean":
-        speech_en = f"{said}. Did you mean {d.suggestion}? Tap confirm to save."
+    if parsed is None:
+        d, entry, suggested_id = None, None, None
     else:
-        speech_en = f"{said}. Tap confirm to save."
-    speech, audio_b64 = _speak(speech_en, m)
-    return {**base, "decision": d.action, "entry": entry, "suggestion": d.suggestion,
-            "speech_text": speech, "audio_b64": audio_b64}
+        d, entry, suggested_id = _save(db, m, user, parsed, matches, note["id"])
+    db.table("voice_notes").update({"transcript_en": transcript, "parsed": {
+        "entry": asdict(parsed) if parsed else None, "input_text": text, "answer_to": answer_to,
+        "decision": {"action": d.action, "party_action": d.party_action, "suggestion": d.suggestion,
+                     "suggested_party_id": suggested_id} if d else None,
+    }}).eq("id", note["id"]).execute()
+
+    if parsed is None:
+        return _respond(m, note["id"], NOT_HEARD, "clarify", transcript=transcript)
+    if d.action == "clarify":
+        return _respond(m, note["id"], d.reason or "How much, and for whom?", "clarify", transcript=transcript)
+    name = parsed.party_name if d.party_action == "ask_did_you_mean" else entry.get("party_name")
+    return _respond(m, note["id"], read_back(parsed, name, d.action, d.suggestion), d.action, entry,
+                    d.suggestion, transcript)
+
+
+class Resolve(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    voice_note_id: str
+    choice: Literal["use_suggested", "create_new"]
+
+
+@router.post("/voice/entry/resolve")
+def resolve(body: Resolve, user: CurrentUser = Depends(current_user)):
+    """Re-run the save decision for a "Did you mean X?" entry with the user's answer."""
+    m = require_membership(user)
+    db = user_client(user.token)
+    note = _voice_note(db, body.voice_note_id, m["shop_id"])
+    info = note.get("parsed") or {}
+    dec = info.get("decision") or {}
+    if dec.get("party_action") != "ask_did_you_mean" or not info.get("entry"):
+        raise AppError(409, "nothing_to_resolve", "This recording has no question to answer.")
+    rows = (db.table("entries").select("id, status").eq("voice_note_id", note["id"]).limit(1).execute().data)
+    if not rows or rows[0]["status"] != "pending":
+        raise AppError(409, "already_resolved", "This entry was already confirmed or voided.")
+    entry_id = rows[0]["id"]
+    e = info["entry"]
+    parsed = llm_router.ParsedEntry(e["type"], e["party_name"], e["amount_paise"], e["note"], e["occurred_on"],
+                                    False, None)
+    kind = party_kind_for(parsed.type)
+    if body.choice == "use_suggested":
+        matches = [{"party_id": dec["suggested_party_id"], "display_name": dec["suggestion"], "score": 1.0}]
+    else:
+        matches = []
+    d = llm_router.decide_save(parsed, matches)       # deterministic: party given, amount rule applies
+    party_id = d.party_id
+    if d.party_action == "create_flagged":
+        party_id = get_or_create_party(db, m["shop_id"], parsed.party_name, kind, needs_review=True)
+    upd: dict = {"party_id": party_id, "review_reason": d.reason}
+    if d.action == "auto":
+        upd.update(status="confirmed", auto_saved=True, confirmed_by=user.id, confirmed_at=now_iso())
+    db.table("entries").update(upd).eq("id", entry_id).execute()
+    entry = fetch_entry(db, entry_id)
+    db.table("voice_notes").update({"parsed": {**info, "decision": {**dec, "resolved": body.choice}}}
+                                   ).eq("id", note["id"]).execute()
+    return _respond(m, note["id"], read_back(parsed, entry["party_name"], d.action, None), d.action, entry,
+                    None, note.get("transcript_en"))
+
+
+@router.post("/voice/ask")
+def voice_ask(audio: UploadFile = File(...), user: CurrentUser = Depends(current_user)):
+    """CLAUDE.md §6.2: STT (translate) → Groq Q&A with read-only tools → translate back + number
+    guard → TTS. shop_id is injected server-side. The recording is kept (voice_notes, purpose
+    'question')."""
+    m = require_membership(user)
+    shop_id, lang = m["shop_id"], m["lang"]
+    db = user_client(user.token)
+    data, mime, ext = _read_audio(audio)
+    path = upload("voice", shop_id, data, mime, ext)
+    note = db.table("voice_notes").insert({"shop_id": shop_id, "audio_path": path, "spoken_lang": lang,
+                                           "purpose": "question", "created_by": user.id}).execute().data[0]
+    today = today_ist()
+    r = llm_router.voice_question_pipeline(data, shop_id, m, today.isoformat(), sarvam(),
+                                           make_tools(db, today), mime=mime, filename=f"note.{ext}")
+    db.table("voice_notes").update({"transcript_en": r.question_en,
+                                    "parsed": {"answer_en": r.reply_en}}).eq("id", note["id"]).execute()
+    return {"text": r.reply_local, "audio_b64": base64.b64encode(r.audio).decode() if r.audio else None,
+            "question_en": r.question_en, "voice_note_id": note["id"]}

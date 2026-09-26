@@ -91,14 +91,20 @@ export const en = {
 
   ledger: {
     holdToAdd: 'Hold to add',
+    holdToAsk: 'Hold to ask',
+    holdToAnswer: 'Hold to answer',
+    scanBill: 'Scan a bill',
     listening: 'Listening… release to send',
     working: 'Working…',
     tooShort: 'Hold the button while speaking.',
-    micDenied: 'Microphone access is blocked. Allow the microphone for this site in your browser settings, then try again.',
     recent: ['Recent', 'entries.'],
-    empty: 'No entries yet. Hold the button and say one.',
+    empty: ['Hold ADD and say what happened,', 'like ‘Ramesh took 250 on credit’.'],
     confirm: 'Confirm',
+    edit: 'Edit',
     voidIt: 'Void',
+    yesName: (name: string) => `Yes, ${name}`,
+    didYouMean: (name: string) => `Did you mean ${name}?`,
+    noNewPerson: 'No, new person',
     addByHand: 'Add by hand',
     closeForm: 'Close form',
     type: 'Type',
@@ -108,8 +114,20 @@ export const en = {
     save: 'Save entry',
     saved: (who: string, amount: string) => `Saved · ${who} · ${amount}`,
     heard: (text: string) => `Heard: “${text}”`,
-    play: '▶ Play',
+    play: 'Play',
     noParty: '—',
+  },
+
+  mic: {
+    heading: ['Microphone', 'is blocked.'],
+    lead: 'Khata needs the microphone to hear entries and questions. Nothing is recorded until you hold a button.',
+    steps: [
+      'Tap the lock or settings icon next to the web address.',
+      'Find Microphone and choose Allow.',
+      'Come back here and tap Try again.',
+    ],
+    retry: 'Try again',
+    close: 'Close',
   },
 
   about: {
@@ -245,8 +263,17 @@ export const en = {
     owesYou: (amount: string) => `Owes you ${amount}`,
     youOwe: (amount: string) => `You owe ${amount}`,
     settled: 'Settled',
-    empty: 'No parties yet.',
+    empty: 'No customers or suppliers yet. They appear when you add an entry.',
+    noMatch: 'Nobody by that name.',
     back: 'All parties',
+    search: 'Search by name',
+    customers: 'Customers',
+    suppliers: 'Suppliers',
+    playRecording: 'Play the recording',
+    openBill: 'Open the bill photo',
+    noEntries: 'No entries yet.',
+    customer: 'Customer',
+    supplier: 'Supplier',
   },
 
   toast: {
