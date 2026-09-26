@@ -17,6 +17,7 @@ const AboutScreen = lazy(() => import('./screens/AboutScreen').then((m) => ({ de
 const OnboardingScreen = lazy(() => import('./screens/OnboardingScreen').then((m) => ({ default: m.OnboardingScreen })))
 const PartiesScreen = lazy(() => import('./screens/PartiesScreen').then((m) => ({ default: m.PartiesScreen })))
 const PartyDetailScreen = lazy(() => import('./screens/PartiesScreen').then((m) => ({ default: m.PartyDetailScreen })))
+const LedgerTableScreen = lazy(() => import('./screens/LedgerTableScreen').then((m) => ({ default: m.LedgerTableScreen })))
 const ReviewScreen = lazy(() => import('./screens/ReviewScreen').then((m) => ({ default: m.ReviewScreen })))
 const EntryScreen = lazy(() => import('./screens/EntryScreen').then((m) => ({ default: m.EntryScreen })))
 const ScanScreen = lazy(() => import('./screens/ScanScreen').then((m) => ({ default: m.ScanScreen })))
@@ -51,6 +52,7 @@ export function App() {
         <Route element={<RequireShop />}>
           <Route path="/app" element={<AppShell />}>
             <Route index element={<LedgerScreen />} />
+            <Route path="ledger" element={<LedgerTableScreen />} />
             <Route path="parties" element={<PartiesScreen />} />
             <Route path="parties/:id" element={<PartyDetailScreen />} />
             <Route path="review" element={<ReviewScreen />} />

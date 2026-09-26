@@ -235,6 +235,35 @@ def c_tts(client, w, fake_sarvam):
     assert fake_sarvam.calls[-1][0] == "tts"
 
 
+def c_ledger(client, w):
+    for q in ("", "?q=Ramesh", "?status=pending,confirmed,voided", f"?party={w.a_party}"):
+        r = client.get(f"/ledger{q}", headers=w.a["headers"])
+        assert r.status_code == 200, r.text
+        _no_b(w, r.json())
+    # Asking for B's party or B's member id finds nothing.
+    assert client.get(f"/ledger?party={w.b_party}", headers=w.a["headers"]).json()["rows"] == []
+    assert client.get(f"/ledger?member={w.b['id']}", headers=w.a["headers"]).json()["rows"] == []
+    assert client.get("/ledger", headers=w.b["headers"]).json()["total_count"] >= 2   # B sees its own
+
+
+def c_ledger_csv(client, w):
+    r = client.get("/ledger/export.csv?status=pending,confirmed,voided", headers=w.a["headers"])
+    assert r.status_code == 200 and "Ramesh" in r.text
+    _no_b(w, r.text)
+    assert "Suresh" not in r.text and "100.00" not in r.text                       # B's rows
+
+
+def c_suggest(client, w):
+    r = client.get("/parties/suggest?q=Sures", headers=w.a["headers"]).json()
+    assert r["parties"] == []                                                      # Suresh is B's
+    _no_b(w, client.get("/parties/suggest?q=Rames", headers=w.a["headers"]).json())
+
+
+def c_statement(client, w):
+    _is_404(client.get(f"/parties/{w.b_party}/statement", headers=w.a["headers"]))
+    assert client.get(f"/parties/{w.a_party}/statement", headers=w.a["headers"]).status_code == 200
+
+
 CASES = {
     ("GET", "/me"): c_me,
     ("PATCH", "/me"): c_patch_me,
@@ -259,6 +288,11 @@ CASES = {
     ("GET", "/insights/weekly"): c_insights,
     ("GET", "/media/{bucket}/{item_id}"): c_media,
     ("POST", "/tts"): c_tts,
+    # GOAL_2.0 routes
+    ("GET", "/ledger"): c_ledger,
+    ("GET", "/ledger/export.csv"): c_ledger_csv,
+    ("GET", "/parties/suggest"): c_suggest,
+    ("GET", "/parties/{party_id}/statement"): c_statement,
 }
 # Routes that act only on the caller's own shop by construction (shop_id comes from the caller's
 # membership, never from the request) and have no B-owned id to aim at. Each has a reason.
@@ -278,6 +312,9 @@ SPEC_ROUTES = {
     ("POST", "/voice/ask"), ("POST", "/receipts"), ("GET", "/receipts/{receipt_id}"),
     ("POST", "/receipts/{receipt_id}/save"), ("GET", "/insights/weekly"), ("POST", "/tts"), ("GET", "/review"),
     ("GET", "/media/{bucket}/{item_id}"),
+} | {  # GOAL_2.0 additions (CLAUDE.md §6.5 is updated with each)
+    ("GET", "/ledger"), ("GET", "/ledger/export.csv"), ("GET", "/parties/suggest"),
+    ("GET", "/parties/{party_id}/statement"),
 }
 
 
@@ -287,7 +324,7 @@ def test_app_serves_exactly_the_spec_routes():
 
 def test_every_route_is_covered():
     routes = api_routes()
-    assert len(routes) == 25   # guards against a route walker that silently finds nothing
+    assert len(routes) >= 25 and len(routes) == len(SPEC_ROUTES)   # a walker that finds nothing fails here
     missing = routes - set(CASES) - set(OWN_SHOP_ONLY)
     assert not missing, f"add an isolation case for: {sorted(missing)}"
 
@@ -302,7 +339,30 @@ def test_route_isolation(route, client, world, fake_sarvam, fake_groq):
 
 # --- Tables and views through the user-scoped client -------------------------------------------
 SHOP_TABLES = ["parties", "receipts", "voice_notes", "entries", "audit_log", "weekly_insights",
-               "party_balances", "daily_summary", "review_queue", "shop_members"]
+               "party_balances", "daily_summary", "review_queue", "shop_members",
+               # migration 003
+               "ai_reports", "daily_briefings", "party_statement", "daily_register", "weekly_register",
+               "credit_aging", "credit_aging_totals", "supplier_dues"]
+
+
+@pytest.mark.parametrize("fn, extra", [
+    ("ledger_rows", {}), ("ledger_totals", {}),
+    ("expense_by_category", {"p_from": "2000-01-01", "p_to": "2100-01-01"}),
+    ("party_period_totals", {"p_from": "2000-01-01", "p_to": "2100-01-01"}),
+    ("expense_category_weeks", {"p_week_start": "2026-09-21", "p_today": "2026-09-26"}),
+    ("customer_credit_usual", {"p_month_start": "2026-09-01", "p_today": "2026-09-26"}),
+])
+def test_a_gets_nothing_from_bs_shop_through_the_sql_functions(world, fn, extra):
+    """Migration 003's functions are security invoker: asked for shop B, A's RLS returns nothing."""
+    db = user_client(world.a["token"])
+    rows = db.rpc(fn, {"p_shop": world.b["shop_id"], **extra}).execute().data
+    if fn == "ledger_totals":
+        assert rows[0]["row_count"] == 0 and rows[0]["credit_given_paise"] == 0
+    else:
+        assert rows == []
+    mine = user_client(world.b["token"]).rpc(fn, {"p_shop": world.b["shop_id"], **extra}).execute().data
+    if fn in ("ledger_rows", "party_period_totals"):
+        assert mine, "B should see its own rows (proves the empty answer above is isolation)"
 
 
 @pytest.mark.parametrize("table", SHOP_TABLES + ["shops", "party_aliases"])

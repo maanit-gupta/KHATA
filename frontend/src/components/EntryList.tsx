@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { useNavigate } from 'react-router'
 import { useReveal } from '../hooks/useReveal'
 import type { Entry } from '../lib/ledger'
+import { formatDay } from '../lib/dates'
 import { formatPaise } from '../lib/money'
 import { t } from '../strings/en'
 import { Row } from './ui/Row'
@@ -28,7 +29,7 @@ export function EntryList({ entries, empty, revealKey, aside }:
           aside={aside?.(e)}
         >
           {e.party_name ?? e.note ?? t.entryTypes[e.type]}
-          <span className="block t-label">{t.entryTypes[e.type]} · {e.occurred_on}</span>
+          <span className="block t-label">{t.entryTypes[e.type]} · {formatDay(e.occurred_on)}</span>
         </Row>
       ))}
     </div>

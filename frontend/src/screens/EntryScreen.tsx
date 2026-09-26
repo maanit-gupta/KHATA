@@ -36,7 +36,7 @@ export function EntryScreen() {
           </Disclosure>
         )}
       </div>
-      <div className="flex flex-col gap-10 app:col-span-2">
+      <div className="flex min-w-0 flex-col gap-10 app:col-span-2">
         {q.error && <p className="t-body-lg" role="alert">{q.error.message}</p>}
         {q.data && <EditForm key={q.data.entry.id + q.data.entry.status} entry={q.data.entry} />}
         {q.data && <History rows={q.data.history} />}

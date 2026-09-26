@@ -1,12 +1,12 @@
-import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { EntryList } from '../components/EntryList'
+import { ManualAdd } from '../components/ManualAdd'
 import { MicBlocked } from '../components/MicBlocked'
 import { WeeklyCard } from '../components/WeeklyCard'
 import { Button, ButtonLink } from '../components/ui/Button'
 import { Disclosure } from '../components/ui/Disclosure'
 import { SegmentChip } from '../components/ui/Chip'
-import { Field } from '../components/ui/Field'
 import { H2 } from '../components/ui/H2'
 import { HoldButton } from '../components/ui/HoldButton'
 import { PixelSquares } from '../components/ui/PixelSquares'
@@ -14,10 +14,9 @@ import { PlayButton } from '../components/ui/PlayButton'
 import { RibbedGlass } from '../components/ui/RibbedGlass'
 import { StatusSquare } from '../components/ui/StatusSquare'
 import { Toast, ToastAction } from '../components/ui/Toast'
-import { api } from '../lib/api'
 import {
-  confirmEntry, ENTRY_TYPES, NO_PARTY_TYPES, playB64, reasonText, useEntries, useLedgerMutation, voidEntry,
-  type Entry, type EntryType, type VoiceResult,
+  confirmEntry, playB64, reasonText, useEntries, useLedgerMutation, voidEntry,
+  type Entry, type VoiceResult,
 } from '../lib/ledger'
 import { formatPaise } from '../lib/money'
 import { resolveVoiceEntry, uploadVoiceEntry, uploadVoiceQuestion, type Answer } from '../lib/voice'
@@ -117,7 +116,7 @@ export function LedgerScreen() {
               {showForm ? t.ledger.closeForm : t.ledger.addByHand}
             </Button>
           </div>
-          {showForm && <ManualForm onDone={(entry) => { setShowForm(false); showToast({ kind: 'saved', entry }, UNDO_MS) }} />}
+          {showForm && <div className="mb-8"><ManualAdd onSaved={(entry) => showToast({ kind: 'saved', entry }, UNDO_MS)} /></div>}
           {entries.error && <p className="t-body-lg" role="alert">{entries.error.message}</p>}
           <EntryList entries={entries.data} revealKey="ledger-recent" empty={<EmptyLedger />} />
         </section>
@@ -230,40 +229,5 @@ function Heard({ raw }: { raw: string | null | undefined }) {
     <Disclosure label={t.ledger.whatIHeard} testId="what-i-heard">
       <p className="t-body whitespace-pre-wrap">{text ? `“${text}”` : t.ledger.heardNothing}</p>
     </Disclosure>
-  )
-}
-
-function ManualForm({ onDone }: { onDone: (e: Entry) => void }) {
-  const [type, setType] = useState<EntryType>('credit_given')
-  const [amount, setAmount] = useState('')
-  const [party, setParty] = useState('')
-  const [note, setNote] = useState('')
-  const save = useLedgerMutation((body: object) => api<Entry>('/entries', { method: 'POST', body: JSON.stringify(body) }))
-  const needsParty = !NO_PARTY_TYPES.includes(type)
-
-  function submit(ev: FormEvent) {
-    ev.preventDefault()
-    save.mutate(
-      { type, amount_rupees: Number(amount), party_name: needsParty ? party : undefined, note: note || undefined },
-      { onSuccess: (e) => onDone(e as Entry) },
-    )
-  }
-
-  return (
-    <form onSubmit={submit} className="mb-8 flex flex-col gap-6 border-t border-ink pt-6">
-      <fieldset>
-        <legend className="mb-2 t-field-label">{t.ledger.type}</legend>
-        <div className="flex flex-wrap gap-2">
-          {ENTRY_TYPES.map((k) => (
-            <SegmentChip key={k} selected={type === k} onClick={() => setType(k)}>{t.entryTypes[k]}</SegmentChip>
-          ))}
-        </div>
-      </fieldset>
-      <Field label={t.ledger.amount} required inputMode="decimal" type="number" min="0.01" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} />
-      {needsParty && <Field label={t.ledger.partyName} required value={party} onChange={(e) => setParty(e.target.value)} />}
-      <Field label={t.ledger.note} value={note} onChange={(e) => setNote(e.target.value)} />
-      {save.error && <p className="t-body" role="alert">{save.error.message}</p>}
-      <Button type="submit" disabled={save.isPending}>{save.isPending ? t.ledger.working : t.ledger.save}</Button>
-    </form>
   )
 }

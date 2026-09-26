@@ -77,3 +77,20 @@ def test_large_clock_skew_and_expiry_are_refused(monkeypatch):
     for delta in (lambda now: {"iat": now + 3600}, lambda now: {"exp": now - 120}):
         with pytest.raises(AppError):
             verify_token(_local_signed(delta, monkeypatch))
+
+
+def test_a_jwks_network_failure_is_try_again_not_a_logout(client, monkeypatch):
+    """A blip fetching the key set must not tell a signed-in user their session ended."""
+    import jwt as pyjwt
+    from app import auth
+    calls = []
+
+    class Down:
+        def get_signing_key_from_jwt(self, token):
+            calls.append(token)
+            raise pyjwt.PyJWKClientConnectionError("network down")
+    monkeypatch.setattr(auth, "_jwks_client", lambda: Down())
+    monkeypatch.setattr(auth.time, "sleep", lambda s: None)
+    r = client.get("/me", headers={"Authorization": "Bearer abc.def.ghi"})
+    assert r.status_code == 503 and r.json()["error"]["code"] == "auth_unavailable"
+    assert len(calls) == 2                                      # retried once

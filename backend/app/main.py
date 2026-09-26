@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .config import get_settings
 from .errors import CatchAllErrors, install_error_handlers
-from .routers import entries, insights, me, media, parties, receipts, review, shops, tts, voice
+from .routers import entries, insights, ledger, me, media, parties, receipts, review, shops, tts, voice
 
 logging.basicConfig(level=logging.INFO)
 # httpx logs every request URL at INFO (Supabase filters carry user ids). Keep only warnings.
@@ -41,6 +41,7 @@ app.add_middleware(
     allow_origins=get_settings().allowed_origins,
     allow_methods=["GET", "POST", "PATCH", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"],
+    expose_headers=["Content-Disposition"],   # the CSV export's filename (GOAL_2.0 P3.3)
 )
 app.add_middleware(NoStore)  # outermost: CORS preflights and 500s carry it too
 install_error_handlers(app)
@@ -54,6 +55,7 @@ def health():
 app.include_router(me.router)
 app.include_router(shops.router)
 app.include_router(entries.router)
+app.include_router(ledger.router)
 app.include_router(parties.router)
 app.include_router(voice.router)
 app.include_router(receipts.router)

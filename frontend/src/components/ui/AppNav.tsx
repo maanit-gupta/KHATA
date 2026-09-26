@@ -6,13 +6,14 @@ import { t } from '../../strings/en'
 import { ChipButton, CountBadge, NavChip } from './Chip'
 
 const ITEMS = [
-  { to: '/app', label: t.nav.ledger, end: true },
+  { to: '/app', label: t.nav.home, end: true },
+  { to: '/app/ledger', label: t.nav.ledger },
   { to: '/app/parties', label: t.nav.parties },
   { to: '/app/review', label: t.nav.review, review: true },
   { to: '/app/settings', label: t.nav.settings },
 ] as const
 
-/** LEDGER / PARTIES / REVIEW / SETTINGS. Below 900px: one MENU chip → full-screen ink overlay. */
+/** HOME / LEDGER / PARTIES / REVIEW / SETTINGS (GOAL_2.0 P3.1). Below 900px: one MENU chip → full-screen ink overlay. */
 export function AppNav({ reviewCount = 0 }: { reviewCount?: number }) {
   const [open, setOpen] = useState(false)
   const reduced = useReducedMotion()

@@ -145,13 +145,17 @@ Only total, vendor, and date are stored as fields; the full raw OCR JSON is kept
 | POST /voice/entry | multipart `audio`, `answer_to?` (voice_note_id of a clarify question, D-018) | `{decision: auto/confirm/clarify, entry?, suggestion?, speech_text, audio_b64, voice_note_id}` |
 | POST /voice/entry/resolve | `{voice_note_id, choice: use_suggested/create_new}` | same shape as above, re-run from the save decision |
 | POST /voice/ask | multipart `audio` | `{text, audio_b64}` |
-| POST /receipts | multipart `image`, `kind`, `settled?` | `{receipt_id, status}`; OCR runs as a BackgroundTask |
-| GET /receipts/{id} | — | status, vendor_name, bill_date, total_paise, error |
-| POST /receipts/{id}/save | `{vendor_name, bill_date, total_rupees, customer_name?}` | entry + decision (save rules apply) |
+| POST /receipts | multipart `image` (JPG/PNG, or a one-page PDF), `kind`, `settled?` | `{receipt_id, status}`; OCR (Extract + Digitise) runs as a BackgroundTask |
+| GET /receipts/{id} | — | status, stage (uploaded/reading/checking while running), vendor_name, bill_date, total_paise, total_check (ok/check), ocr_text, file_type, error |
+| POST /receipts/{id}/save | `{vendor_name, bill_date, total_rupees, customer_name?, kind?, settled?}`; allowed 90 s after upload even if still reading | entry + decision (save rules apply) |
 | GET /insights/weekly | — | metrics, narration (in caller's language, number-guarded) |
 | POST /tts | `{text}` English, ≤ 2500 chars; localized with the number guard first (D-006) | `{text, audio_b64}` in caller's language/voice |
 | GET /review | — | rows of `review_queue` |
 | GET /media/{voice or receipts}/{id} | — | `{url}` signed, 10 min |
+| GET /ledger | `?from=&to=&type=&party=&source=&member=&status=&q=&page=` (lists comma-separated; voided only when `status` names it) | `{rows (with added_by), page, page_size (50), total_count, pages, totals {cash_in, credit_given, collected, expenses} (confirmed only), members}` (GOAL_2.0 P3.1) |
+| GET /ledger/export.csv | same filters | CSV, UTF-8 with BOM: Date, Party, Type, Amount (₹) (rupees, 2 decimals), Source, Added by, Status, Note, Recorded at (IST) (P3.3) |
+| GET /parties/suggest | `?q=&kind=` | `{parties}`: find_party matches, then name prefix matches (P3.4) |
+| GET /parties/{id}/statement | `?from=&to=` | `{party, opening_balance_paise, closing_balance_paise, rows [{entry_id, occurred_on, type, amount_paise, note, source, delta_paise, running_balance_paise}]}` from the `party_statement` view (P3.2) |
 
 Amounts cross the API as rupees (number) in requests and paise (integer) in responses; the
 frontend formats paise as `₹1,250` (en-IN grouping). Errors: `{error: {code, message}}` with a
