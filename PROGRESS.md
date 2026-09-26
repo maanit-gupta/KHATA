@@ -4,8 +4,8 @@
 
 | Service | Budget | Used | Log |
 |---|---|---|---|
-| Sarvam (STT + TTS + translate + Document AI, each HTTP call counted, status polls included) | 40 | 28 | P2 diagnosis: 9 + 4 + 4 (3 extract jobs); P2 live E2E: 11 |
-| Groq | 60 | 0 | — |
+| Sarvam (STT + TTS + translate + Document AI, each HTTP call counted, status polls included) | 40 | 34 | P2 diagnosis: 9 + 4 + 4 (3 extract jobs); P2 live E2E: 11; P9 live voice check: 6 (2 STT, 2 translate, 2 TTS) |
+| Groq | 60 | 4 | P9 live voice check: 1 parse (gpt-oss-20b) + 3 Q&A turns (gpt-oss-120b: find_party → get_party_balance → answer) |
 
 ## Tasks
 
@@ -77,3 +77,15 @@
 - [x] **P8.4 Playwright e2e.** `e2e/journey.spec.ts`: signup → onboarding (create shop, Hindi) → manual entry → voice entry over ₹5,000 (confirm) → auto-saved voice entry (undo) → parties → party detail → scan (mocked OCR, polled, total edited) → review (keep new supplier) → settings (language, voice sample). Headless, passes. The voice steps use Chromium's fake microphone fed with `e2e/fixtures/voice.wav`.
 - [x] **P8.5 Security sweep.** `backend/tests/test_security.py`: CORS answers only `ALLOWED_ORIGINS` (evil origin gets no ACAO); unhandled 500s keep CORS + error shape and leak no detail (D-038, a bug found and fixed); `admin_client` used only in `routers/shops.py` and `storage.py`; no `print(` and no logging of tokens/secrets/passwords; httpx URL logging turned down to WARNING; 10 MB + MIME allow-lists (tests in `test_receipts.py`, `test_voice_entry.py`); per-user rate limits on voice/receipts/TTS (D-037) with a 429 test. Git history scanned for keys in P0: none. Postgrest timeout 30 s (D-039).
 - [x] **P8.6 Render cold start.** DEPLOY.md "Cold starts" (open /health a minute before; ping every 10 min to keep warm). Frontend shows "Waking the server…" if the first request (GET /me) takes over 3 s (D-041). E2E: `errors.spec.ts` cold-start test. Screens: `artifacts/screens/P8.6-cold-start/`.
+
+### P9 Docs and handoff
+- [x] **README.md**: Status table rewritten line by line (every ✅ backed by a test or live check in this file; ⚠️ for migration 002 and untested handwritten bills); demo tour updated; setup and test commands (`pytest`, `npm run build/lint/typecheck`, `npm run test:e2e`). **Verified from a clean clone** (`git clone` into a temp dir): fresh Python 3.12 venv + `pip install -r requirements.txt` + `uvicorn` → `/health` `{"ok":true}`; `npm ci` → build (main chunk 85.4 KB gzip) → lint (0) → typecheck (0) → Playwright 47/47.
+- [x] **DEPLOY.md**: ordered checklist with migrations (001 applied, 002 pending), env vars, CORS check, cold-start / keep-warm note.
+- [x] **DEMO.md**: 3-minute script with a fallback for each step (`/demo` as the universal fallback).
+- [x] **CLAUDE.md**: §6.5 rows updated where the contract changed (answer_to, receipts status, /tts, entry history) and a new §14 listing each spec change with its D-number.
+- [x] **P9.1 Demo mode (added by audit)**: `lib/demo.ts` serves entry edit/history, review, weekly insights, ask, did-you-mean resolve, settings, party rename/merge. E2E `e2e/demo.spec.ts` walks them with zero API calls.
+- [x] **Live voice check** (`backend/scripts/live_voice_check.py`, 6 Sarvam + 4 Groq): Safari MP4 → STT → parse → auto-save → Hindi read-back; question → real Groq tool calls (`find_party` → `get_party_balance`) → "Ramesh currently owes 250 rupees." → Hindi. Found and fixed: a `note` that just echoes the transcript is dropped. Found: code-mixed Hindi translation (N-009).
+
+### Stretch
+- [x] Fuzzy thresholds evaluated on 40 names / 68 variants: precision 0.95, recall 0.47; proposal in D-044 (no code change).
+- [x] STT priming with party names behind `STT_PRIME_PARTY_NAMES` (default off, saaras:v4 only): D-045.

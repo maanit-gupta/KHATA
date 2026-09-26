@@ -13,6 +13,9 @@ from .config import get_settings
 from .errors import AppError
 
 ALGORITHMS = ["ES256", "RS256"]
+# Supabase's clock and ours are never exactly equal. `iat` is a whole second, so without leeway a
+# token used within a second of login can look issued "in the future" and be refused (D-043).
+CLOCK_LEEWAY_S = 30
 
 
 @dataclass(frozen=True)
@@ -37,7 +40,7 @@ def verify_token(token: str) -> dict:
     try:
         key = _jwks_client().get_signing_key_from_jwt(token)
         return jwt.decode(token, key.key, algorithms=ALGORITHMS,
-                          audience="authenticated", issuer=s.jwt_issuer,
+                          audience="authenticated", issuer=s.jwt_issuer, leeway=CLOCK_LEEWAY_S,
                           options={"require": ["exp", "sub"]})
     except (jwt.PyJWTError, jwt.PyJWKClientError):
         raise _unauthorized()
