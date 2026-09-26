@@ -1,0 +1,139 @@
+{
+  "calls": {
+    "sarvam": 28
+  },
+  "rows": [
+    {
+      "lang": "hi-IN",
+      "option": "mayura-colloquial",
+      "model": "mayura:v1",
+      "mode": "modern-colloquial",
+      "voice": "shubh",
+      "texts": [
+        "Ishaan, 2,470 rupees उधार, saved.",
+        "Meera, 6,300 rupees payment receive हो गया। Save करने के लिए confirm कीजिए।",
+        "Dev ने आपको 1,25,000 rupees owe किए हैं, सबसे ज़्यादा।"
+      ],
+      "number_guard": [
+        true,
+        true,
+        true
+      ],
+      "audio": "artifacts/tts-compare/hi-IN_mayura-colloquial.mp3",
+      "heard_back": "Ishan, two thousand four hundred seventy rupees credit saved. My six thousand three hundred rupees payment has been received. Confirm to save. Dev has owed you one lakh twenty-five thousand rupees, the most.",
+      "amounts_heard": {
+        "2470": true,
+        "6300": true,
+        "125000": true
+      }
+    },
+    {
+      "lang": "hi-IN",
+      "option": "mayura-formal",
+      "model": "mayura:v1",
+      "mode": "formal",
+      "voice": "shubh",
+      "texts": [
+        "ईशान, 2,470 रुपये उधार लिए हुए, बचा लिए गए।",
+        "मीरा, 6,300 रुपये का भुगतान प्राप्त हुआ। सहेजने के लिए पुष्टि करें पर टैप करें।",
+        "देव, आपसे 1,25,000 रुपये अधिक बकाया है।"
+      ],
+      "number_guard": [
+        true,
+        true,
+        true
+      ],
+      "audio": "artifacts/tts-compare/hi-IN_mayura-formal.mp3"
+    },
+    {
+      "lang": "hi-IN",
+      "option": "sarvam-translate",
+      "model": "sarvam-translate:v1",
+      "mode": "formal",
+      "voice": "shubh",
+      "texts": [
+        "ईशान, 2,470 रुपये उधार, बचा लिया।",
+        "मीरा को 6,300 रुपये का भुगतान प्राप्त हुआ। सहेजने के लिए टैप करके पुष्टि करें।",
+        "देव पर आपका 1,25,000 रुपये बकाया है, जो किसी भी व्यक्ति से सबसे अधिक है।"
+      ],
+      "number_guard": [
+        true,
+        true,
+        true
+      ],
+      "audio": "artifacts/tts-compare/hi-IN_sarvam-translate.mp3",
+      "heard_back": "Ishan saved two thousand four hundred seventy rupees on credit. Meera received a payment of six thousand three hundred rupees. Tap to confirm for ease. You have one lakh twenty-five thousand rupees outstanding on Dev, which is the highest amount for any person.",
+      "amounts_heard": {
+        "2470": true,
+        "6300": true,
+        "125000": true
+      }
+    },
+    {
+      "lang": "ta-IN",
+      "option": "mayura-colloquial",
+      "model": "mayura:v1",
+      "mode": "modern-colloquial",
+      "voice": "ratan",
+      "texts": [
+        "Ishaan, 2,470 rupees எடுத்துக்கிட்டாரு, save பண்ணிட்டாரு.",
+        "Meera, 6,300 rupees payment receive ஆகிடுச்சு. Save பண்ண confirm பண்ணுங்க.",
+        "Dev உங்களுக்கு 1,25,000 rupees கடன் பட்டிருக்காரு."
+      ],
+      "number_guard": [
+        true,
+        true,
+        true
+      ],
+      "audio": "artifacts/tts-compare/ta-IN_mayura-colloquial.mp3",
+      "heard_back": "Ishan took 2470 rupees and saved it. Meera received 6300 rupees payment. Confirm to save. Dev owes you 125,000 rupees.",
+      "amounts_heard": {
+        "2470": true,
+        "6300": true,
+        "125000": true
+      }
+    },
+    {
+      "lang": "ta-IN",
+      "option": "mayura-formal",
+      "model": "mayura:v1",
+      "mode": "formal",
+      "voice": "ratan",
+      "texts": [
+        "ஈசான், இரண்டு ஆயிரத்து நாநூறு ரூபாய் கடன் வாங்கியிருக்கிறேன், சேமித்து வைத்திருக்கிறேன்.",
+        "மீரா, 6,300 ரூபாய் பணம் வந்து சேர்ந்தது. உறுதிப்படுத்துங்கள் என்பதைத் தட்டவும்.",
+        "தேவ், நீங்கள் அனைவரையும் விட 1,25,000 ரூபாய் அதிகமாகச் செலுத்தவேண்டும்."
+      ],
+      "number_guard": [
+        false,
+        true,
+        true
+      ],
+      "audio": "artifacts/tts-compare/ta-IN_mayura-formal.mp3"
+    },
+    {
+      "lang": "ta-IN",
+      "option": "sarvam-translate",
+      "model": "sarvam-translate:v1",
+      "mode": "formal",
+      "voice": "ratan",
+      "texts": [
+        "இஷான், 2,470 ரூபாய் கடன், சேமிக்கப்பட்டது.",
+        "மீராவுக்கு 6,300 ரூபாய் பணம் வந்துள்ளது. சேமிக்க டேப்பை உறுதிப்படுத்தவும்.",
+        "தேவ் உங்களுக்கு 1,25,000 ரூபாய் தர வேண்டும், இது மற்றவர்களை விட அதிகம்."
+      ],
+      "number_guard": [
+        true,
+        true,
+        true
+      ],
+      "audio": "artifacts/tts-compare/ta-IN_sarvam-translate.mp3",
+      "heard_back": "Ishan, a loan of 2470 rupees has been saved. Meera has received 6300 rupees. Confirm the savings data. Dev needs to give you 125,000 rupees. This is more than others.",
+      "amounts_heard": {
+        "2470": true,
+        "6300": true,
+        "125000": true
+      }
+    }
+  ]
+}

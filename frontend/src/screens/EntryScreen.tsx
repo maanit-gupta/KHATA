@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { Button } from '../components/ui/Button'
+import { Disclosure } from '../components/ui/Disclosure'
 import { SegmentChip } from '../components/ui/Chip'
 import { Field } from '../components/ui/Field'
 import { H2 } from '../components/ui/H2'
@@ -24,6 +25,16 @@ export function EntryScreen() {
       <div className="flex flex-col gap-4">
         <H2 lines={t.entry.heading} as="h1" />
         {q.data && <Summary entry={q.data.entry} />}
+        {q.data?.heard && (
+          <Disclosure label={t.ledger.whatIHeard} testId="what-i-heard">
+            <p className="t-body whitespace-pre-wrap">{q.data.heard.stt_raw?.trim() ? `“${q.data.heard.stt_raw.trim()}”` : t.ledger.heardNothing}</p>
+          </Disclosure>
+        )}
+        {q.data?.read && (
+          <Disclosure label={t.scan.whatIRead} testId="what-i-read">
+            <p className="max-h-[50vh] overflow-y-auto t-body whitespace-pre-wrap break-words">{q.data.read.ocr_text?.trim() || t.scan.readNothing}</p>
+          </Disclosure>
+        )}
       </div>
       <div className="flex flex-col gap-10 app:col-span-2">
         {q.error && <p className="t-body-lg" role="alert">{q.error.message}</p>}

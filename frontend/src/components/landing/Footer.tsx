@@ -9,7 +9,7 @@ const L = t.landing
 export function Footer() {
   return (
     <footer data-dark className="on-dark relative overflow-hidden bg-ink gutter-x pb-12 pt-20 text-paper">
-      <PixelSquares seed={3301} count={8} dark />
+      <PixelSquares pattern={3301} count={8} dark />
       <div className="relative z-10 grid gap-12 app:grid-cols-3">
         <p className="t-h2">{t.brand}</p>
         <nav aria-label={t.landing.nav.home} className="app:col-span-2">

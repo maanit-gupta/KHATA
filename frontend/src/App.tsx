@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect } from 'react'
+import { lazy, Suspense } from 'react'
 import { Route } from 'react-router'
 import { PublicOnly, RequireSessionWithoutShop, RequireShop } from './auth/guards'
 import { OfflineOverlay } from './components/OfflineOverlay'
@@ -6,7 +6,6 @@ import { TransitionRoutes } from './components/ui/PageTransition'
 import { AppShell } from './screens/AppShell'
 import { AuthScreen } from './screens/AuthScreen'
 import { LedgerScreen } from './screens/LedgerScreen'
-import { enterDemo } from './lib/demo'
 import { t } from './strings/en'
 
 // /dev/ui exists only in dev: Vite replaces import.meta.env.DEV with false in production builds,
@@ -28,12 +27,6 @@ const DevTransition = import.meta.env.DEV
   ? lazy(() => import('./dev/DevUI').then((m) => ({ default: m.DevTransitionTarget })))
   : null
 
-/** /demo reached by an in-app link (a full page load is handled in main.tsx before React). */
-function DemoEntry() {
-  useEffect(() => { enterDemo('/app') }, [])
-  return null
-}
-
 function NotFound() {
   return (
     <div className="flex min-h-dvh items-center gutter-x">
@@ -48,7 +41,6 @@ export function App() {
       <TransitionRoutes>
         <Route path="/" element={<LandingScreen />} />
         <Route path="/about" element={<AboutScreen />} />
-        <Route path="/demo" element={<DemoEntry />} />
         <Route element={<PublicOnly />}>
           <Route path="/login" element={<AuthScreen mode="login" />} />
           <Route path="/signup" element={<AuthScreen mode="signup" />} />

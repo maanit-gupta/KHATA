@@ -1,0 +1,104 @@
+{
+ "_about": "A live Sarvam Document AI digitise get_results payload (output_format md), 2026-09-26, for the synthetic Hindi bill rendered by backend/scripts/harness.py. Pages carry `blocks` (text + reading_order, tables as HTML), not `content` (D-050).",
+ "results": {
+  "lang": "hi-IN",
+  "type": "digitise",
+  "usage": {
+   "pages_total": 1,
+   "pages_failed": 0,
+   "pages_discarded": 0,
+   "pages_processed": 1,
+   "pages_succeeded": 1
+  },
+  "job_id": "01a0dec0-0b94-76d5-813c-b133ba3e3901",
+  "status": "completed",
+  "documents": [
+   {
+    "pages": [
+     {
+      "blocks": [
+       {
+        "text": "Parvat Distributors (किराना)",
+        "block_id": "p1-b1",
+        "bbox_norm": [
+         0.1159090909090909,
+         0.11875,
+         0.8738636363636364,
+         0.18625
+        ],
+        "layout_tag": "section-title",
+        "coordinates": {
+         "x1": 102,
+         "x2": 769,
+         "y1": 95,
+         "y2": 149
+        },
+        "reading_order": 1
+       },
+       {
+        "text": "मेन बाज़ार, वार्ड 7",
+        "block_id": "p1-b2",
+        "bbox_norm": [
+         0.37727272727272726,
+         0.20125,
+         0.6193181818181818,
+         0.24625
+        ],
+        "layout_tag": "paragraph",
+        "coordinates": {
+         "x1": 332,
+         "x2": 545,
+         "y1": 161,
+         "y2": 197
+        },
+        "reading_order": 2
+       },
+       {
+        "text": "<table>\n<thead>\n<tr>\n<th>सामान</th>\n<th>मात्रा</th>\n<th>दर</th>\n<th>रकम</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td>Soap</td>\n<td>12</td>\n<td>41.00</td>\n<td>492.00</td>\n</tr>\n<tr>\n<td>Rice 25kg</td>\n<td>1</td>\n<td>303.00</td>\n<td>303.00</td>\n</tr>\n<tr>\n<td>Toor dal</td>\n<td>5</td>\n<td>86.00</td>\n<td>430.00</td>\n</tr>\n</tbody>\n<tfoot>\n<tr>\n<td colspan=\"3\">कुल योग</td>\n<td>1,225.00</td>\n</tr>\n</tfoot>\n</table>",
+        "block_id": "p1-b3",
+        "bbox_norm": [
+         0.05568181818181818,
+         0.27375,
+         0.9386363636363636,
+         0.6425
+        ],
+        "layout_tag": "table",
+        "coordinates": {
+         "x1": 49,
+         "x2": 826,
+         "y1": 219,
+         "y2": 514
+        },
+        "reading_order": 3
+       },
+       {
+        "text": "धन्यवाद",
+        "block_id": "p1-b4",
+        "bbox_norm": [
+         0.4511363636363636,
+         0.68625,
+         0.5488636363636363,
+         0.72125
+        ],
+        "layout_tag": "paragraph",
+        "coordinates": {
+         "x1": 397,
+         "x2": 483,
+         "y1": 549,
+         "y2": 577
+        },
+        "reading_order": 4
+       }
+      ],
+      "page_num": 1,
+      "image_width": 880,
+      "image_height": 800
+     }
+    ],
+    "status": "completed",
+    "filename": "bill.png",
+    "page_count": 1
+   }
+  ]
+ }
+}

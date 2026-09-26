@@ -1,0 +1,29 @@
+[
+  {
+    "file": "bill1_printed.png",
+    "path": "/Users/maanitgupta/KHATA/artifacts/harness/synthetic/bills/bill1_printed.png",
+    "kind": "supplier",
+    "settled": "false",
+    "vendor": "Sagar Kirana Supply",
+    "date": "2026-09-13",
+    "total": "2308.00"
+  },
+  {
+    "file": "bill2_photo.jpg",
+    "path": "/Users/maanitgupta/KHATA/artifacts/harness/synthetic/bills/bill2_photo.jpg",
+    "kind": "supplier",
+    "settled": "true",
+    "vendor": "Nandini Agencies",
+    "date": "2026-09-20",
+    "total": "2464.00"
+  },
+  {
+    "file": "bill3_hindi.png",
+    "path": "/Users/maanitgupta/KHATA/artifacts/harness/synthetic/bills/bill3_hindi.png",
+    "kind": "expense",
+    "settled": "",
+    "vendor": "Parvat Distributors",
+    "date": "2026-09-14",
+    "total": "1225.00"
+  }
+]

@@ -20,7 +20,7 @@ export function resolveVoiceEntry({ voiceNoteId, choice }: { voiceNoteId: string
   })
 }
 
-export type Answer = { text: string; audio_b64: string | null; question_en?: string }
+export type Answer = { text: string; audio_b64: string | null; question_en?: string; stt_raw?: string | null }
 
 export function uploadVoiceQuestion(blob: Blob) {
   return api<Answer>('/voice/ask', { method: 'POST', body: audioForm(blob) })

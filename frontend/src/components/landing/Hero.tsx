@@ -23,7 +23,7 @@ export function Hero() {
         </div>
       </section>
       <motion.div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-44 z-0 h-[26%] app:bottom-32 app:h-[30%]" style={reduced ? undefined : { y }}>
-        <PixelSquares seed={1107} count={11} />
+        <PixelSquares pattern={1107} count={11} />
       </motion.div>
     </RibbedGlass>
   )

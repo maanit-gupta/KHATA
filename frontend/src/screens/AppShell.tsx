@@ -3,9 +3,7 @@ import { Outlet } from 'react-router'
 import { AppNav } from '../components/ui/AppNav'
 import { Header } from '../components/ui/Header'
 import { H2 } from '../components/ui/H2'
-import { exitDemo, isDemo } from '../lib/demo'
 import { useReview } from '../lib/review'
-import { t } from '../strings/en'
 
 /** In-app chrome: --bone header with the nav chips; screens render below it. */
 export function AppShell() {
@@ -16,12 +14,6 @@ export function AppShell() {
         <AppNav reviewCount={review.data?.count ?? 0} />
       </Header>
       <main className="pt-14">
-        {isDemo() && (
-          <div className="flex flex-wrap items-center justify-between gap-2 bg-cyan gutter-x py-2">
-            <p className="t-label text-ink">{t.demo.banner}</p>
-            <button type="button" onClick={exitDemo} className="min-h-12 t-label text-ink underline">{t.demo.exit}</button>
-          </div>
-        )}
         <Suspense fallback={null}>
           <Outlet />
         </Suspense>

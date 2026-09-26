@@ -14,6 +14,27 @@ logging.basicConfig(level=logging.INFO)
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
 app = FastAPI(title="Kirana Ledger API")
+
+
+class NoStore:
+    """Cache-Control: no-store on every API response (GOAL_2.0 P1.2b): a voice or bill result is
+    never served from a browser or proxy cache. Pure ASGI, so BackgroundTasks are untouched."""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            return await self.app(scope, receive, send)
+
+        async def with_header(message):
+            if message["type"] == "http.response.start":
+                message.setdefault("headers", [])
+                message["headers"] = [*message["headers"], (b"cache-control", b"no-store")]
+            await send(message)
+        await self.app(scope, receive, with_header)
+
+
 app.add_middleware(CatchAllErrors)  # added first = innermost, so its 500s still get CORS headers
 app.add_middleware(
     CORSMiddleware,
@@ -21,6 +42,7 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PATCH", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"],
 )
+app.add_middleware(NoStore)  # outermost: CORS preflights and 500s carry it too
 install_error_handlers(app)
 
 

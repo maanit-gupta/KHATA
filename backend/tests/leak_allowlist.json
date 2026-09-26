@@ -1,0 +1,17 @@
+{
+  "_about": "GOAL_2.0 §1 'Mocks must be test-only': tests/test_leaks.py fails if production code (backend/app/, frontend/src/) contains a leak term. Each exception names the file, the term, a substring the matching line must contain, and why it is not canned data.",
+  "allowed": [
+    {
+      "path": "frontend/src/components/ui/RibbedGlass.tsx",
+      "term": "seed",
+      "line_contains": "<feTurbulence",
+      "reason": "The SVG <feTurbulence seed> attribute: the noise pattern of the DESIGN.md ribbed-glass ripple. A drawing parameter, not data."
+    },
+    {
+      "path": "backend/app/services/sarvam.py",
+      "term": "sample_",
+      "line_contains": "speech_sample_rate=",
+      "reason": "The Bulbul TTS SDK parameter speech_sample_rate (audio sample rate in Hz), not sample data."
+    }
+  ]
+}

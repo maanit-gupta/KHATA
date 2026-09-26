@@ -21,6 +21,8 @@ export type Party = {
 export type VoiceResult = {
   decision: 'auto' | 'confirm' | 'clarify'; entry: Entry | null; suggestion: string | null
   speech_text: string; audio_b64: string | null; voice_note_id: string; transcript_en: string | null
+  /** Exactly what speech-to-text returned, unprocessed (GOAL_2.0 P1.3). */
+  stt_raw?: string | null; speech_text_en?: string
 }
 
 export const useEntries = () =>
@@ -54,10 +56,7 @@ export function reasonText(reason: string | null | undefined): string {
 export const confirmEntry = (id: string) => api<Entry>(`/entries/${id}/confirm`, { method: 'POST' })
 export const voidEntry = (id: string) => api<Entry>(`/entries/${id}/void`, { method: 'POST' })
 
-export function playB64(b64: string | null) {
-  if (!b64) return
-  new Audio(`data:audio/mpeg;base64,${b64}`).play().catch(() => undefined)
-}
+export { playB64 } from './player'
 
 /** Explicit wording, never a bare minus sign (DESIGN.md §6.8). + = they owe the shop. */
 export function balanceText(paise: number) {

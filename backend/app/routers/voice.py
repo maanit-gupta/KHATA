@@ -19,6 +19,7 @@ from pydantic import BaseModel, ConfigDict
 
 from ..auth import CurrentUser, current_user
 from ..config import stt_prime_party_names
+from ..langs import speech_lang
 from ..qa_tools import make_tools
 from ..ratelimit import rate_limit
 from ..db import user_client
@@ -38,7 +39,7 @@ MIN_AUDIO_BYTES = 1000  # an empty WebM container is ~100 bytes: the button was 
 TYPE_WORDS = {"credit_given": "udhaar", "payment_received": "payment received",
               "cash_sale": "cash sale", "purchase_credit": "purchase on credit",
               "purchase_paid": "purchase paid", "payment_made": "payment made", "expense": "expense"}
-NOT_HEARD = "I did not hear anything. Please say it again."
+NOT_HEARD = "I didn't catch that. Hold the button and say it again."
 
 
 def spoken_rupees(paise: int) -> str:
@@ -82,11 +83,16 @@ def _voice_note(db, note_id: str, shop_id: str) -> dict:
     return rows[0]
 
 
-def _respond(m: dict, note_id: str, speech_en: str, decision: str, entry: dict | None = None,
-             suggestion: str | None = None, transcript: str | None = None) -> dict:
+def _respond(db, m: dict, note_id: str, speech_en: str, decision: str, entry: dict | None = None,
+             suggestion: str | None = None, transcript: str | None = None, stt_raw: str | None = None) -> dict:
+    """Speak the English read-back in the member's voice language, record what was said on the
+    voice note (GOAL_2.0 P1.3), and answer the client."""
     speech, audio_b64 = speak(speech_en, m)
+    db.table("voice_notes").update({"decision": decision, "speech_text_en": speech_en,
+                                    "speech_text_local": speech}).eq("id", note_id).execute()
     return {"decision": decision, "entry": entry, "suggestion": suggestion, "speech_text": speech,
-            "audio_b64": audio_b64, "voice_note_id": note_id, "transcript_en": transcript}
+            "speech_text_en": speech_en, "audio_b64": audio_b64, "voice_note_id": note_id,
+            "transcript_en": transcript, "stt_raw": stt_raw}
 
 
 def _save(db, m: dict, user: CurrentUser, parsed: llm_router.ParsedEntry, matches: list[dict],
@@ -152,9 +158,13 @@ def voice_entry(audio: UploadFile = File(...), answer_to: str | None = Form(None
                                            "purpose": "entry", "created_by": user.id}).execute().data[0]
 
     keyterms = _party_keyterms(db, shop_id) if stt_prime_party_names() else None
-    transcript = sarvam().transcribe_to_english(data, lang, mime, f"note.{ext}", keyterms=keyterms)
-    text = transcript
-    if first:  # §9b: join the question's transcript with the answer and parse them together
+    heard = sarvam().transcribe_to_english(data, speech_lang(m), mime, f"note.{ext}", keyterms=keyterms)
+    transcript = heard.text
+    # Stored before anything else happens, so a later failure still leaves what was heard.
+    db.table("voice_notes").update({"stt_raw": heard.raw, "transcript_en": transcript}).eq("id", note["id"]).execute()
+    silent = llm_router.heard_nothing(transcript)      # GOAL_2.0 P1.6: nothing said → nothing saved
+    text = "" if silent else transcript
+    if first and not silent:  # §9b: join the question's transcript with the answer and parse them together
         first_text = (first.get("parsed") or {}).get("input_text") or first.get("transcript_en") or ""
         text = f"{first_text} {transcript}".strip()
     parsed = llm_router.parse_entry(text, today_ist().isoformat()) if text else None
@@ -164,6 +174,10 @@ def voice_entry(audio: UploadFile = File(...), answer_to: str | None = Form(None
             parsed.party_name = parsed.party_name.strip()
         if parsed.note and _same_text(parsed.note, transcript):
             parsed.note = None   # live check: the parser echoed the whole sentence as the note
+        if parsed.type in NO_PARTY_TYPES and parsed.party_name and not parsed.note:
+            # Harness run 1: "Paid 2470 for the electricity bill" parsed with party "electricity
+            # bill". Expenses and cash entries never take a party, so keep the words as the note.
+            parsed.note, parsed.party_name = parsed.party_name, None
 
     kind = party_kind_for(parsed.type) if parsed else None
     matches: list[dict] = []
@@ -175,19 +189,21 @@ def voice_entry(audio: UploadFile = File(...), answer_to: str | None = Form(None
         d, entry, suggested_id = None, None, None
     else:
         d, entry, suggested_id = _save(db, m, user, parsed, matches, note["id"])
-    db.table("voice_notes").update({"transcript_en": transcript, "parsed": {
+    db.table("voice_notes").update({"parsed": {
         "entry": asdict(parsed) if parsed else None, "input_text": text, "answer_to": answer_to,
+        "stt_language_code": heard.language_code, "stt_request_id": heard.request_id,
         "decision": {"action": d.action, "party_action": d.party_action, "suggestion": d.suggestion,
                      "suggested_party_id": suggested_id} if d else None,
     }}).eq("id", note["id"]).execute()
 
     if parsed is None:
-        return _respond(m, note["id"], NOT_HEARD, "clarify", transcript=transcript)
+        return _respond(db, m, note["id"], NOT_HEARD, "clarify", transcript=transcript, stt_raw=heard.raw)
     if d.action == "clarify":
-        return _respond(m, note["id"], d.reason or "How much, and for whom?", "clarify", transcript=transcript)
+        return _respond(db, m, note["id"], d.reason or "How much, and for whom?", "clarify",
+                        transcript=transcript, stt_raw=heard.raw)
     name = parsed.party_name if d.party_action == "ask_did_you_mean" else entry.get("party_name")
-    return _respond(m, note["id"], read_back(parsed, name, d.action, d.suggestion), d.action, entry,
-                    d.suggestion, transcript)
+    return _respond(db, m, note["id"], read_back(parsed, name, d.action, d.suggestion), d.action, entry,
+                    d.suggestion, transcript, heard.raw)
 
 
 class Resolve(BaseModel):
@@ -229,8 +245,8 @@ def resolve(body: Resolve, user: CurrentUser = Depends(current_user)):
     entry = fetch_entry(db, entry_id)
     db.table("voice_notes").update({"parsed": {**info, "decision": {**dec, "resolved": body.choice}}}
                                    ).eq("id", note["id"]).execute()
-    return _respond(m, note["id"], read_back(parsed, entry["party_name"], d.action, None), d.action, entry,
-                    None, note.get("transcript_en"))
+    return _respond(db, m, note["id"], read_back(parsed, entry["party_name"], d.action, None), d.action, entry,
+                    None, note.get("transcript_en"), note.get("stt_raw"))
 
 
 @router.post("/voice/ask", dependencies=[Depends(rate_limit("voice"))])
@@ -248,7 +264,9 @@ def voice_ask(audio: UploadFile = File(...), user: CurrentUser = Depends(current
     today = today_ist()
     r = llm_router.voice_question_pipeline(data, shop_id, m, today.isoformat(), sarvam(),
                                            make_tools(db, today), mime=mime, filename=f"note.{ext}")
-    db.table("voice_notes").update({"transcript_en": r.question_en,
-                                    "parsed": {"answer_en": r.reply_en}}).eq("id", note["id"]).execute()
+    db.table("voice_notes").update({"stt_raw": r.stt_raw, "transcript_en": r.question_en,
+                                    "speech_text_en": r.reply_en, "speech_text_local": r.reply_local,
+                                    "parsed": {"answer_en": r.reply_en, "stt_language_code": r.stt_language_code}}
+                                   ).eq("id", note["id"]).execute()
     return {"text": r.reply_local, "audio_b64": base64.b64encode(r.audio).decode() if r.audio else None,
-            "question_en": r.question_en, "voice_note_id": note["id"]}
+            "question_en": r.question_en, "stt_raw": r.stt_raw, "voice_note_id": note["id"]}

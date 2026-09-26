@@ -57,8 +57,31 @@ def _complete(**kwargs: Any) -> Any:
 # Sarvam adapter — interface only. Implement with the `sarvamai` SDK and verify
 # every signature against https://docs.sarvam.ai/_mcp/server (SDK changes often).
 # ---------------------------------------------------------------------------
+@dataclass
+class Heard:
+    """What STT returned, before any processing (GOAL_2.0 P1.3: stored as voice_notes.stt_raw)."""
+    raw: str
+    language_code: str | None = None     # detected language (useful with language_code "unknown")
+    request_id: str | None = None
+
+    @property
+    def text(self) -> str:
+        return (self.raw or "").strip()
+
+
+# Transcripts that mean nobody said anything: STT models return these for silence or room noise
+# (GOAL_2.0 P1.6). Compared after lowercasing and dropping punctuation.
+SILENCE_TRANSCRIPTS = {"", "thank you", "thanks", "thank you very much", "thanks for watching",
+                       "you", "okay", "ok", "hmm", "hm", "uh", "um", "bye", "music", "silence", "noise"}
+
+
+def heard_nothing(text: str) -> bool:
+    words = re.sub(r"[^\w\s]", " ", (text or "").lower()).split()
+    return " ".join(words) in SILENCE_TRANSCRIPTS
+
+
 class SarvamAdapter(Protocol):
-    def transcribe_to_english(self, audio: bytes, lang: str, mime: str = ..., filename: str = ...) -> str: ...  # STT, mode="translate"
+    def transcribe_to_english(self, audio: bytes, lang: str, mime: str = ..., filename: str = ...) -> Heard: ...  # STT, mode="translate"
     def translate(self, text: str, src: str, tgt: str) -> str: ...       # Mayura / Sarvam-Translate
     def speak(self, text: str, lang: str, voice: str | None) -> bytes: ...  # Bulbul, keep < 2500 chars
 
@@ -85,12 +108,17 @@ ENTRY_SCHEMA = {
     },
 }
 
+# No party names and no example sentences anywhere in a prompt (GOAL_2.0 P1.1b): a model given
+# a sample entry pulls unclear transcripts towards it. Number words are listed context-free.
 PARSE_SYSTEM = """You convert a shopkeeper's spoken ledger note (already translated to English
 by speech-to-text, so it may read awkwardly) into ONE ledger entry. Rules:
-- 'udhaar', 'credit pe diya', 'baaki' -> credit_given. 'wapas diya', 'jama kiya', 'paid' by a customer -> payment_received.
-- Convert numbers exactly, including leftover Hindi words: dhai sau=250, saade teen hazaar=3500,
-  sava sau=125, 'two-fifty'=250, 'one thousand two hundred'=1200.
+- Use only the name and the amount that appear in the note. Copy the name as written in the note.
+  If the note has no amount, amount_rupees is null. Never invent or reuse a name or an amount.
+- Words meaning credit given to a customer: udhaar, credit pe diya, baaki -> credit_given.
+  A customer paying back: wapas diya, jama kiya, paid -> payment_received.
 - Buying stock paid on the spot -> purchase_paid; on credit -> purchase_credit.
+- Number words (convert exactly): dhai sau = 250; saade teen hazaar = 3500; sava sau = 125;
+  two-fifty = 250; one thousand two hundred = 1200.
 - If the amount, the party, or the direction of money is unclear, set needs_clarification=true
   and ask ONE short question. Never guess an amount.
 - Output only fields in the schema."""
@@ -219,10 +247,10 @@ QA_TOOLS = [
 ]
 
 QA_SYSTEM = """You are a ledger assistant for a small Indian shop. Answer in plain English
-in at most 2 short sentences, because your answer will be translated and spoken aloud.
+in at most two short sentences, because your answer will be translated and spoken aloud.
 - Use ONLY numbers returned by tools. Never add, subtract or estimate yourself; if a total
   is needed, call the tool that returns it.
-- Write amounts as digits with the rupee word, e.g. "1250 rupees".
+- Write every amount as digits followed by the word "rupees".
 - If find_party returns several close matches, ask which one (name them). If none, say so.
 - You cannot create, edit or delete entries. If asked, tell the user to use the Add button."""
 
@@ -308,35 +336,41 @@ def localize_for_speech(answer_en: str, lang: str, sarvam: SarvamAdapter) -> str
     return translated
 
 
+NOT_HEARD_QUESTION = "I didn't catch that. Hold the button and ask again."
+
+
 @dataclass
 class QAResult:
     question_en: str
     reply_en: str
     reply_local: str
     audio: bytes | None
-
-
-NOT_HEARD_QUESTION = "I did not hear a question. Please ask again."
+    stt_raw: str = ""
+    stt_language_code: str | None = None
 
 
 def voice_question_pipeline(audio: bytes, shop_id: str, member: dict, today_iso: str,
                             sarvam: SarvamAdapter, tools_impl: dict, *, mime: str = "audio/webm",
                             filename: str = "note.webm") -> QAResult:
-    """member = the caller's shop_members row: language is per user, not per shop.
-    STT (translate) -> answer with read-only tools -> localize + number guard -> TTS.
-    A translate or TTS failure falls back to English text / no audio; the answer still shows."""
-    lang = member["lang"]
-    question_en = sarvam.transcribe_to_english(audio, lang, mime, filename)   # speech -> English text
-    reply_en = answer(question_en, shop_id, today_iso, tools_impl) if question_en.strip() else NOT_HEARD_QUESTION
+    """member = the caller's shop_members row: languages are per user, not per shop.
+    STT (translate, the member's speech language) -> answer with read-only tools -> localize into
+    the member's voice language + number guard -> TTS. A translate or TTS failure falls back to
+    English text / no audio; the answer still shows."""
+    from ..langs import speech_lang, voice_for, voice_lang
+    heard = sarvam.transcribe_to_english(audio, speech_lang(member), mime, filename)   # speech -> English text
+    question_en = heard.text
+    reply_en = (NOT_HEARD_QUESTION if heard_nothing(question_en)
+                else answer(question_en, shop_id, today_iso, tools_impl))
+    out_lang = voice_lang(member)
     try:
-        reply_local = localize_for_speech(reply_en, lang, sarvam)
+        reply_local = localize_for_speech(reply_en, out_lang, sarvam)
     except AppError:
         reply_local = reply_en
     try:
-        spoken = sarvam.speak(reply_local, lang, member.get("tts_voice"))
+        spoken = sarvam.speak(reply_local, out_lang, voice_for(member, out_lang))
     except AppError:
         spoken = None
-    return QAResult(question_en, reply_en, reply_local, spoken)
+    return QAResult(question_en, reply_en, reply_local, spoken, heard.raw, heard.language_code)
 
 
 # ---------------------------------------------------------------------------
@@ -348,7 +382,7 @@ RECEIPT_FIELDS_SCHEMA = {
     "required": ["vendor_name", "bill_date", "total"],
     "properties": {
         "vendor_name": {"type": ["string", "null"]},
-        "bill_date": {"type": ["string", "null"], "description": "As printed, e.g. 24/09/2026"},
+        "bill_date": {"type": ["string", "null"], "description": "The bill date exactly as printed"},
         "total": {"type": ["number", "null"], "description": "Grand total payable, INR"},
     },
 }
@@ -379,19 +413,21 @@ def receipt_fields(ocr_text: str) -> dict:
 # ---------------------------------------------------------------------------
 # 4) Insight narration — SQL computes, Groq only phrases
 # ---------------------------------------------------------------------------
+NARRATE_SYSTEM = ("Summarise these shop metrics in three short spoken sentences for the owner. "
+                  "The week is not over yet, so say 'so far'. Amounts are in rupees: write them as "
+                  "digits followed by the word rupees. Use only the numbers given, copied exactly; "
+                  "never add, subtract, round or give percentages. Mention one action they could take.")
+
+
 def narrate_insights(metrics: dict[str, Any]) -> str:
-    """metrics comes from daily_summary / party_balances, in RUPEES (CLAUDE.md §9b), e.g.
-    {"this_week_so_far": {"cash_sales_rupees": 1250.5, ...}, "last_week": {...},
-     "top_debtors": [{"name": "Ramesh", "owes_rupees": 2300, "days_since_last_activity": 34}]}
+    """metrics comes from daily_summary / party_balances, in RUPEES (CLAUDE.md §9b):
+    {"this_week_so_far": {"cash_sales_rupees": <number>, ...}, "last_week": {...},
+     "top_debtors": [{"name": <party name>, "owes_rupees": <number>, "days_since_last_activity": <int>}]}
     The caller checks every number in the reply against these metrics (number guard)."""
     resp = _complete(
         model=PARSE_MODEL, temperature=0.3,
         messages=[
-            {"role": "system", "content":
-                "Summarise these shop metrics in 3 short spoken sentences for the owner. "
-                "The week is not over yet, so say 'so far'. Amounts are in rupees: write them as "
-                "digits followed by the word rupees. Use only the numbers given, copied exactly; "
-                "never add, subtract, round or give percentages. Mention one action they could take."},
+            {"role": "system", "content": NARRATE_SYSTEM},
             {"role": "user", "content": json.dumps(metrics)},
         ],
     )

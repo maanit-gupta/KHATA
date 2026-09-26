@@ -4,6 +4,7 @@ import { EntryList } from '../components/EntryList'
 import { MicBlocked } from '../components/MicBlocked'
 import { WeeklyCard } from '../components/WeeklyCard'
 import { Button, ButtonLink } from '../components/ui/Button'
+import { Disclosure } from '../components/ui/Disclosure'
 import { SegmentChip } from '../components/ui/Chip'
 import { Field } from '../components/ui/Field'
 import { H2 } from '../components/ui/H2'
@@ -148,7 +149,7 @@ function EmptyLedger() {
   return (
     <div className="relative min-h-[240px] border-t border-ink pt-6">
       <p className="relative z-10 max-w-md t-body-lg">{t.ledger.empty[0]}<br />{t.ledger.empty[1]}</p>
-      <PixelSquares seed={42} count={7} className="top-24" />
+      <PixelSquares pattern={42} count={7} className="top-24" />
     </div>
   )
 }
@@ -170,7 +171,6 @@ function EntryResult({ result, busy, onResolve, onConfirm, answer, onTooShort, o
   const e = result.entry
   return (
     <section className="border-t border-ink pt-6" data-testid="result-card">
-      {result.transcript_en && <p className="mb-4 t-body">{t.ledger.heard(result.transcript_en)}</p>}
       {e ? (
         <>
           <p className="flex items-center gap-3 t-label">
@@ -206,16 +206,30 @@ function EntryResult({ result, busy, onResolve, onConfirm, answer, onTooShort, o
       )}
       {e && <p className="mt-4 t-body">{result.speech_text}</p>}
       {result.audio_b64 && <div className="mt-4"><PlayButton onClick={() => playB64(result.audio_b64)} /></div>}
+      <div className="mt-4"><Heard raw={result.stt_raw ?? result.transcript_en} /></div>
     </section>
   )
 }
 
 function AnswerCard({ answer }: { answer: Answer }) {
   return (
-    <section className="flex items-start gap-4 border-t border-ink pt-6" data-testid="answer-card">
-      {answer.audio_b64 && <PlayButton onClick={() => playB64(answer.audio_b64)} />}
-      <p className="t-body-lg">{answer.text}</p>
+    <section className="border-t border-ink pt-6" data-testid="answer-card">
+      <div className="flex items-start gap-4">
+        {answer.audio_b64 && <PlayButton onClick={() => playB64(answer.audio_b64)} />}
+        <p className="t-body-lg">{answer.text}</p>
+      </div>
+      <div className="mt-4"><Heard raw={answer.stt_raw ?? answer.question_en} /></div>
     </section>
+  )
+}
+
+/** GOAL_2.0 P1.3: the raw transcript, so the shopkeeper can see exactly what was heard. */
+function Heard({ raw }: { raw: string | null | undefined }) {
+  const text = (raw ?? '').trim()
+  return (
+    <Disclosure label={t.ledger.whatIHeard} testId="what-i-heard">
+      <p className="t-body whitespace-pre-wrap">{text ? `“${text}”` : t.ledger.heardNothing}</p>
+    </Disclosure>
   )
 }
 
