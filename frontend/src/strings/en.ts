@@ -163,7 +163,7 @@ export const en = {
       { label: 'Try the demo', to: '/demo' },
       { label: 'How it works in detail', to: '/about' },
     ],
-    builtFor: 'Built for a hackathon, September 2026.',
+    builtFor: 'Built for Sarvam Campus Builds, September 2026.',
     repoLabel: 'github.com/maanit-gupta/KHATA',
     repoUrl: 'https://github.com/maanit-gupta/KHATA',
     founderAlt: 'The maker of Khata',

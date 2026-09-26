@@ -1,13 +1,56 @@
 # NEEDS_HUMAN.md
 
-Each item: what's blocked, and the exact action needed.
+Each open item says what the owner must do, and why Claude couldn't do it. Items closed in run 2
+are listed at the end with their evidence.
 
-- **N-001 Rotate the shared demo password.** The test login `demo-walk@example.com` was shared publicly during judging. After judging, change its password (Supabase → Authentication → Users → the user → Reset password), or delete the user. Note: that user does **not** exist in the Supabase project in `backend/.env` (it has 0 users as of 2026-09-26), so check which project the deployed Render backend points at (see N-003).
-- **N-002 Run the catalog checks in the Supabase SQL editor.** The Supabase MCP connector used in this run had no access to project `yspgbhgjdwbmxpnkgoeu`, so these were verified by behaviour only. Paste `scripts/verify_db.sql` into the SQL editor and confirm every row says `ok`.
-- **N-003 Confirm which Supabase project production uses.** The project in `backend/.env` holds 0 users and 0 shops, yet the README says the deployed app has had real sign-ups. Check `SUPABASE_URL` on Render and `VITE_SUPABASE_URL` on Vercel match `backend/.env`. If they don't, apply `migrations/` to the production project too.
-- **N-004 Apply migration 002.** Paste `migrations/002_one_live_entry_per_receipt.sql` into the Supabase SQL editor (additive: one partial unique index). It closes the double-tap race on saving a bill. The app already refuses a second save; the index makes that airtight.
-- **N-005 Test bill reading on real paper.** The live checks used a synthetic printed bill and a phone-photo-style version (both filled 3/3 fields). Photograph 3–5 real bills (a thermal till slip, a handwritten kachcha bill, a faded one) through Scan and note which fields fill. Each bill costs about 5–11 Sarvam calls.
-- **N-006 Landing page content.** (1) Put the maker's photo at `frontend/public/founder.jpg` and 4 bio lines in `frontend/src/strings/en.ts` → `landing.builtByBio`; the "Built by" section then appears. (2) Replace `landing.builtFor` ("Built for a hackathon, September 2026.") with the hackathon's real name. (3) Have a native speaker check the six "Say it your way" lines (`landing.sayLines`, marked `TODO: native-speaker check`).
-- **N-007 Review and merge `goal/complete-khata`.** This run never merges or deploys (GOAL.md §1.2). Review the branch, merge to `main`, then follow DEPLOY.md.
-- **N-008 Orphaned recordings in Storage.** The `voice` bucket holds 4 MP3 files under `7e399260-f258-417b-aa09-1da10eb5e153/` from before this run, whose shop no longer exists (hackathon test data). Retention is "forever" (CLAUDE.md §9), so they were left alone. Delete them in Supabase → Storage if they are test leftovers.
-- **N-009 Listen to the Hindi (and other) read-backs.** The live check (`backend/tests/fixtures/live/voice_*.json`) shows Mayura's `modern-colloquial` mode gives code-mixed text: "Ramesh, 250 rupees उधार लिए, saved." and "Ramesh के पास अभी 250 rupees due हैं।". Numbers were correct, and the answer used the real tools (`find_party` → `get_party_balance`). Whether this reads naturally, or whether `formal` mode / `sarvam-translate:v1` (fully native script, which Bulbul pronounces better per the Sarvam notes) is better, is a product call for a native speaker. Change `mode=` in `backend/app/services/sarvam.py:translate`.
+## Open
+
+- **N-010 Resume the Render backend.** `https://khata-api.onrender.com` answers every request
+  with HTTP 503 "Service Suspended" (Render's page, checked 2026-09-26). While it is suspended the
+  deployed site can't log anyone in past the loading screen, record, or scan; only the in-browser
+  demo worked, and that demo is what returned canned voice and bill results (D-047, D-049).
+  **Do:** Render dashboard → the `khata-api` service → resume it (or check billing / free-tier
+  limits), then confirm its `SUPABASE_URL` env var is `https://yspgbhgjdwbmxpnkgoeu.supabase.co`.
+  *Why not Claude:* changing Render is a deploy action, which GOAL_2.0 §1 forbids.
+- **N-008 Delete 4 orphaned recordings.** Verified by SQL on 2026-09-26: shop
+  `7e399260-f258-417b-aa09-1da10eb5e153` does not exist, and no `voice_notes` or `receipts` row
+  refers to its files. They are hackathon test leftovers (MP3s uploaded 12:51 IST, D-048).
+  **Do:** Supabase → Storage → `voice` → folder `7e399260-f258-417b-aa09-1da10eb5e153` → delete
+  `21dc20f4-3ad6-4b2d-b457-016f9f4ca4eb.mp3`, `f1ea5adf-d676-4493-ac67-3ab7fa9673d4.mp3`,
+  `b3cd29a8-3aad-47f7-b179-8ce0c3ca814e.mp3`, `d4ef9c65-9e9d-4e82-8487-c648d79dd19c.mp3`.
+  *Why not Claude:* GOAL_2.0 authorised it, but this session's permission classifier refused the
+  Storage delete, and a refused action is not worked around.
+- **N-011 Add real test material** (replaces N-005). `test-material/` does not exist, so the
+  P1.4 harness ran on synthetic clips and bills (labelled "synthetic" in its report). **Do:** put
+  real recordings and bill photos in this layout, then run
+  `backend/.venv/bin/python backend/scripts/harness.py`:
+  ```
+  test-material/voice/*.webm|mp3|m4a|wav
+  test-material/voice/expected.csv   # file,lang,what_was_said,expected_type,expected_party,expected_amount
+  test-material/bills/*.jpg|png
+  test-material/bills/expected.csv   # file,kind,vendor,date,total
+  ```
+  Include a thermal till slip, a handwritten kachcha bill and a faded one. Each voice file costs
+  about 3 Sarvam + 1 Groq calls; each bill 2–11 Sarvam calls. *Why not Claude:* only the owner has
+  real shop recordings and real paper bills.
+- **N-007 Review and merge the branches.** Neither run merges or deploys. Review
+  `goal/khata-2` (built on `goal/complete-khata`), merge to `main`, apply the migrations listed
+  in DEPLOY.md, then deploy.
+- **N-006 Landing page content.** (1) Put the maker's photo at `frontend/public/founder.jpg` and
+  4 bio lines in `frontend/src/strings/en.ts` → `landing.builtByBio`; the "Built by" section then
+  appears. (2) Have a native speaker check the six "Say it your way" lines
+  (`landing.sayLines`, marked `TODO: native-speaker check`). *Why not Claude:* the photo and bio
+  are personal facts, and the lines need a native ear.
+
+## Closed in run 2
+
+- **N-001 (shared demo login)** — closed. `demo-walk@example.com` does not exist in the only
+  Supabase project the owner's account holds (`yspgbhgjdwbmxpnkgoeu`, 0 users), and the deployed
+  frontend authenticates only against that project (D-046). There is nothing left to rotate.
+- **N-002 (catalog checks)** — closed. `scripts/verify_db.sql` run through the MCP connector;
+  all 16 rows `ok` (PROGRESS.md, P0.2).
+- **N-003 (which project production uses)** — database half closed: `backend/.env`, the MCP
+  connector and the deployed Vercel bundle all use `yspgbhgjdwbmxpnkgoeu` (D-046). The Render half
+  is N-010.
+- **N-004 (migration 002)** — closed. Applied through the connector; index
+  `entries_one_live_per_receipt` present (D-048).
