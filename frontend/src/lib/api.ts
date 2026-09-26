@@ -1,5 +1,6 @@
 import { supabase } from './supabase'
 import { t } from '../strings/en'
+import { demoApi, isDemo } from './demo'
 
 const API_URL = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
 
@@ -15,6 +16,11 @@ export class ApiError extends Error {
 }
 
 export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
+  if (isDemo()) {
+    return demoApi<T>(path, init).catch((e: Error & { status?: number; code?: string }) => {
+      throw new ApiError(e.status ?? 400, e.code ?? 'demo', e.message)
+    })
+  }
   const { data } = await supabase.auth.getSession()
   const headers = new Headers(init.headers)
   if (data.session) headers.set('Authorization', `Bearer ${data.session.access_token}`)

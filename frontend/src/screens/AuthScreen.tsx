@@ -5,6 +5,7 @@ import { Link } from 'react-router'
 import { SplitLayout } from '../components/SplitLayout'
 import { Button } from '../components/ui/Button'
 import { Field } from '../components/ui/Field'
+import { enterDemo } from '../lib/demo'
 import { supabase } from '../lib/supabase'
 import { t } from '../strings/en'
 
@@ -87,6 +88,7 @@ export function AuthScreen({ mode }: { mode: Mode }) {
         <Button type="submit" variant="inverse" disabled={busy}>
           {busy ? t.auth.working : signup ? t.auth.createAccount : t.auth.logIn}
         </Button>
+        <Button type="button" variant="outline" onClick={() => enterDemo()}>{t.demo.try}</Button>
         <Link to={signup ? '/login' : '/signup'} className="inline-flex min-h-12 items-center self-start t-label underline decoration-1 underline-offset-4">
           {signup ? t.auth.toLogin : t.auth.toSignup}
         </Link>

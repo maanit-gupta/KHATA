@@ -4,6 +4,7 @@ import { AppNav } from '../components/ui/AppNav'
 import { Header } from '../components/ui/Header'
 import { H2 } from '../components/ui/H2'
 import { Row } from '../components/ui/Row'
+import { exitDemo, isDemo } from '../lib/demo'
 import { supabase } from '../lib/supabase'
 import { t } from '../strings/en'
 
@@ -15,6 +16,12 @@ export function AppShell() {
         <AppNav />
       </Header>
       <main className="pt-14">
+        {isDemo() && (
+          <div className="flex flex-wrap items-center justify-between gap-2 bg-cyan gutter-x py-2">
+            <p className="t-label text-ink">{t.demo.banner}</p>
+            <button type="button" onClick={exitDemo} className="min-h-12 t-label text-ink underline">{t.demo.exit}</button>
+          </div>
+        )}
         <Outlet />
       </main>
     </div>
@@ -40,7 +47,7 @@ export function SettingsPlaceholder() {
   return (
     <Screen title={t.screens.settings}>
       <div className="border-b border-ink">
-        <Row status="unselected" onClick={() => supabase.auth.signOut()}>
+        <Row status="unselected" onClick={() => (isDemo() ? exitDemo() : supabase.auth.signOut())}>
           <span className="t-label-lg">{t.screens.logOut}</span>
         </Row>
       </div>
