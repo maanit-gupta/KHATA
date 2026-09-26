@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-import base64
 import logging
 import uuid
-from functools import lru_cache
 
 from fastapi import APIRouter, Depends, File, UploadFile
 
@@ -14,7 +12,8 @@ from ..db import admin_client, user_client
 from ..errors import AppError
 from ..ledger import (NO_PARTY_TYPES, now_iso, party_kind_for, require_membership, today_ist)
 from ..services import llm_router
-from ..services.sarvam import Sarvam
+from ..services.sarvam import client as sarvam
+from ..speech import speak
 from .entries import fetch_entry
 
 log = logging.getLogger("khata")
@@ -27,24 +26,12 @@ EXT = {"audio/webm": "webm", "audio/mp4": "mp4", "audio/mpeg": "mp3", "audio/wav
        "audio/x-wav": "wav", "audio/ogg": "ogg"}
 
 
-@lru_cache
-def sarvam() -> Sarvam:
-    return Sarvam()
-
-
 def _rupees(paise: int) -> str:
     return str(paise // 100) if paise % 100 == 0 else f"{paise / 100:.2f}"
 
 
 def _speak(text_en: str, member: dict) -> tuple[str, str | None]:
-    """Localize (translate + number guard) then TTS. A TTS failure never undoes a save."""
-    try:
-        local = llm_router.localize_for_speech(text_en, member["lang"], sarvam())
-        audio = sarvam().speak(local, member["lang"], member.get("tts_voice"))
-        return local, base64.b64encode(audio).decode()
-    except Exception:
-        log.exception("tts failed")
-        return text_en, None
+    return speak(text_en, member)
 
 
 @router.post("/voice/entry")

@@ -1,0 +1,311 @@
+"""P1.2 tenant isolation. User A (shop A) must not read or write anything of shop B:
+- through every API route (CASES below; test_every_route_is_covered keeps the list complete),
+- through every table and view with the user-scoped client (RLS),
+- through Storage (no signed URL for B's audio or bill photo).
+§12: "User A in shop 1 cannot read any row of shop 2"."""
+
+from __future__ import annotations
+
+from types import SimpleNamespace
+
+import pytest
+from fastapi.routing import APIRoute
+from postgrest.exceptions import APIError
+
+from app.db import admin_client, user_client
+from app.main import app
+from app.storage import upload
+from tests.conftest import AUDIO, Users, post_audio
+
+PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 64
+
+
+@pytest.fixture(scope="module")
+def world(client):
+    u = Users(client)
+    try:
+        a = u.with_shop("Shop A")
+        b = u.with_shop("Shop B")
+        db_b = user_client(b["token"])
+
+        def add(who, **body):
+            r = client.post("/entries", json=body, headers=who["headers"])
+            assert r.status_code == 201, r.text
+            return r.json()
+
+        a_entry = add(a, type="credit_given", amount_rupees=10, party_name="Ramesh")
+        b_entry = add(b, type="credit_given", amount_rupees=100, party_name="Ramesh")
+        add(b, type="credit_given", amount_rupees=100, party_name="Suresh")
+        b_pending = db_b.table("entries").insert({
+            "shop_id": b["shop_id"], "type": "cash_sale", "amount_paise": 600000, "status": "pending",
+            "source": "manual", "review_reason": "amount above ₹5,000"}).execute().data[0]
+        b_flagged = db_b.table("parties").insert({
+            "shop_id": b["shop_id"], "kind": "customer", "display_name": "Mahesh", "name_latin": "mahesh",
+            "needs_review": True}).execute().data[0]
+        db_b.table("party_aliases").insert({"party_id": b_entry["party_id"], "alias_latin": "rames"}).execute()
+        audio_path = upload("voice", b["shop_id"], AUDIO, "audio/webm", "webm")
+        b_note = db_b.table("voice_notes").insert({
+            "shop_id": b["shop_id"], "audio_path": audio_path, "spoken_lang": "en-IN", "purpose": "entry",
+            "transcript_en": "Ramesh 100", "parsed": {"type": "credit_given", "party_name": "Rakesh",
+                                                      "amount_paise": 10000}}).execute().data[0]
+        image_path = upload("receipts", b["shop_id"], PNG, "image/png", "png")
+        b_receipt = db_b.table("receipts").insert({
+            "shop_id": b["shop_id"], "image_path": image_path, "kind": "supplier", "settled": False,
+            "ocr_lang_first": "en-IN", "status": "failed", "error": "could not read"}).execute().data[0]
+        db_b.table("weekly_insights").insert({
+            "shop_id": b["shop_id"], "week_start": "2026-09-21", "metrics": {"x": 1},
+            "narration_en": "B's week"}).execute()
+        a_party = [p for p in client.get("/parties", headers=a["headers"]).json()["parties"]][0]["party_id"]
+        yield SimpleNamespace(
+            a=a, b=b, a_party=a_party, a_entry=a_entry, b_entry=b_entry, b_party=b_entry["party_id"],
+            b_pending=b_pending, b_flagged=b_flagged, b_note=b_note, b_receipt=b_receipt,
+            audio_path=audio_path, image_path=image_path)
+    finally:
+        u.cleanup()
+
+
+def _b_ids(w) -> set[str]:
+    return {w.b_entry["id"], w.b_party, w.b_pending["id"], w.b_flagged["id"], w.b_note["id"],
+            w.b_receipt["id"], w.b["shop_id"]}
+
+
+def _no_b(w, payload) -> None:
+    text = str(payload)
+    leaked = [i for i in _b_ids(w) if i in text]
+    assert not leaked, f"shop B ids leaked: {leaked}"
+
+
+def _is_404(resp):
+    assert resp.status_code == 404, resp.text
+    assert resp.json()["error"]["code"] in ("not_found", "bad_invite_code")
+
+
+# --- API: one case per route ------------------------------------------------------------------
+def c_me(client, w):
+    r = client.get("/me", headers=w.a["headers"]).json()
+    assert r["shop"]["id"] == w.a["shop_id"]
+    _no_b(w, r)
+
+
+def c_patch_me(client, w):
+    r = client.patch("/me", json={"lang": "hi-IN"}, headers=w.a["headers"])
+    assert r.status_code == 200 and r.json()["shop_id"] == w.a["shop_id"]
+    b_row = admin_client().table("shop_members").select("lang").eq("user_id", w.b["id"]).execute().data[0]
+    assert b_row["lang"] == "en-IN"
+
+
+def c_create_shop(client, w):
+    assert client.post("/shops", json={"name": "x", "lang": "en-IN"}, headers=w.a["headers"]).status_code == 409
+
+
+def c_join_shop(client, w):
+    r = client.post("/shops/join", json={"code": w.b["invite_code"], "lang": "en-IN"}, headers=w.a["headers"])
+    assert r.status_code == 409  # one shop per user: A can't hop into B even with B's code
+
+
+def c_list_parties(client, w):
+    for q in ("", "?q=Ramesh", "?kind=customer", "?q=Mahesh"):
+        _no_b(w, client.get(f"/parties{q}", headers=w.a["headers"]).json())
+
+
+def c_get_party(client, w):
+    _is_404(client.get(f"/parties/{w.b_party}", headers=w.a["headers"]))
+
+
+def c_patch_party(client, w):
+    _is_404(client.patch(f"/parties/{w.b_party}", json={"display_name": "Hacked"}, headers=w.a["headers"]))
+    row = admin_client().table("parties").select("display_name").eq("id", w.b_party).execute().data[0]
+    assert row["display_name"] == "Ramesh"
+
+
+def c_merge_party(client, w):
+    _is_404(client.post(f"/parties/{w.b_party}/merge", json={"into_party_id": w.a_party}, headers=w.a["headers"]))
+    _is_404(client.post(f"/parties/{w.a_party}/merge", json={"into_party_id": w.b_party}, headers=w.a["headers"]))
+    assert admin_client().table("entries").select("id").eq("party_id", w.b_party).execute().data
+
+
+def c_list_entries(client, w):
+    for q in ("", "?status=pending", "?limit=100"):
+        _no_b(w, client.get(f"/entries{q}", headers=w.a["headers"]).json())
+
+
+def c_create_entry(client, w):
+    r = client.post("/entries", json={"type": "credit_given", "amount_rupees": 1, "party_id": w.b_party},
+                    headers=w.a["headers"])
+    _is_404(r)
+
+
+def c_get_entry(client, w):
+    _is_404(client.get(f"/entries/{w.b_entry['id']}", headers=w.a["headers"]))
+
+
+def c_patch_entry(client, w):
+    _is_404(client.patch(f"/entries/{w.b_entry['id']}", json={"amount_rupees": 1}, headers=w.a["headers"]))
+    row = admin_client().table("entries").select("amount_paise").eq("id", w.b_entry["id"]).execute().data[0]
+    assert row["amount_paise"] == 10000
+
+
+def c_confirm_entry(client, w):
+    _is_404(client.post(f"/entries/{w.b_pending['id']}/confirm", headers=w.a["headers"]))
+    row = admin_client().table("entries").select("status").eq("id", w.b_pending["id"]).execute().data[0]
+    assert row["status"] == "pending"
+
+
+def c_void_entry(client, w):
+    _is_404(client.post(f"/entries/{w.b_entry['id']}/void", headers=w.a["headers"]))
+    row = admin_client().table("entries").select("status").eq("id", w.b_entry["id"]).execute().data[0]
+    assert row["status"] == "confirmed"
+
+
+def c_voice_entry(client, w, fake_sarvam, fake_groq):
+    # "Suresh" exists only in shop B. A's voice entry must not match it: A gets a new flagged party.
+    fake_sarvam.transcripts.append("Suresh took 20 on credit")
+    fake_groq.parse_returns({"type": "credit_given", "party_name": "Suresh", "amount_rupees": 20})
+    r = post_audio(client, "/voice/entry", w.a["headers"]).json()
+    _no_b(w, r)
+    assert r["decision"] == "auto" and r["suggestion"] is None
+    assert r["entry"]["shop_id"] == w.a["shop_id"]
+
+
+def c_get_receipt(client, w):
+    _is_404(client.get(f"/receipts/{w.b_receipt['id']}", headers=w.a["headers"]))
+
+
+def c_save_receipt(client, w):
+    _is_404(client.post(f"/receipts/{w.b_receipt['id']}/save", json={"vendor_name": "X", "total_rupees": 5},
+                        headers=w.a["headers"]))
+    assert not admin_client().table("entries").select("id").eq("receipt_id", w.b_receipt["id"]).execute().data
+
+
+def c_review(client, w):
+    _no_b(w, client.get("/review", headers=w.a["headers"]).json())
+
+
+def c_media(client, w):
+    _is_404(client.get(f"/media/voice/{w.b_note['id']}", headers=w.a["headers"]))
+    _is_404(client.get(f"/media/receipts/{w.b_receipt['id']}", headers=w.a["headers"]))
+    # And B itself can: proves the 404 above is isolation, not a broken route.
+    assert client.get(f"/media/voice/{w.b_note['id']}", headers=w.b["headers"]).json()["url"].startswith("http")
+
+
+def c_tts(client, w, fake_sarvam):
+    r = client.post("/tts", json={"text": "Ramesh owes you 250 rupees."}, headers=w.a["headers"])
+    assert r.status_code == 200
+    assert fake_sarvam.calls[-1][0] == "tts"
+
+
+CASES = {
+    ("GET", "/me"): c_me,
+    ("PATCH", "/me"): c_patch_me,
+    ("POST", "/shops"): c_create_shop,
+    ("POST", "/shops/join"): c_join_shop,
+    ("GET", "/parties"): c_list_parties,
+    ("GET", "/parties/{party_id}"): c_get_party,
+    ("PATCH", "/parties/{party_id}"): c_patch_party,
+    ("POST", "/parties/{party_id}/merge"): c_merge_party,
+    ("GET", "/entries"): c_list_entries,
+    ("POST", "/entries"): c_create_entry,
+    ("GET", "/entries/{entry_id}"): c_get_entry,
+    ("PATCH", "/entries/{entry_id}"): c_patch_entry,
+    ("POST", "/entries/{entry_id}/confirm"): c_confirm_entry,
+    ("POST", "/entries/{entry_id}/void"): c_void_entry,
+    ("POST", "/voice/entry"): c_voice_entry,
+    ("GET", "/receipts/{receipt_id}"): c_get_receipt,
+    ("POST", "/receipts/{receipt_id}/save"): c_save_receipt,
+    ("GET", "/review"): c_review,
+    ("GET", "/media/{bucket}/{item_id}"): c_media,
+    ("POST", "/tts"): c_tts,
+}
+# Routes that act only on the caller's own shop by construction (shop_id comes from the caller's
+# membership, never from the request) and have no B-owned id to aim at. Each has a reason.
+OWN_SHOP_ONLY = {
+    ("GET", "/health"): "public, no data",
+    ("POST", "/receipts"): "creates a receipt in the caller's shop; B's rows are covered by GET/save",
+}
+
+
+def _routes() -> set[tuple[str, str]]:
+    return {(m, r.path) for r in app.routes if isinstance(r, APIRoute) for m in r.methods}
+
+
+def test_every_route_is_covered():
+    missing = _routes() - set(CASES) - set(OWN_SHOP_ONLY)
+    assert not missing, f"add an isolation case for: {sorted(missing)}"
+
+
+@pytest.mark.parametrize("route", sorted(CASES), ids=lambda r: f"{r[0]} {r[1]}")
+def test_route_isolation(route, client, world, fake_sarvam, fake_groq):
+    fn = CASES[route]
+    kwargs = {k: v for k, v in {"fake_sarvam": fake_sarvam, "fake_groq": fake_groq}.items()
+              if k in fn.__code__.co_varnames[:fn.__code__.co_argcount]}
+    fn(client, world, **kwargs)
+
+
+# --- Tables and views through the user-scoped client -------------------------------------------
+SHOP_TABLES = ["parties", "receipts", "voice_notes", "entries", "audit_log", "weekly_insights",
+               "party_balances", "daily_summary", "review_queue", "shop_members"]
+
+
+@pytest.mark.parametrize("table", SHOP_TABLES + ["shops", "party_aliases"])
+def test_a_cannot_read_b_rows(world, table):
+    db = user_client(world.a["token"])
+    if table == "shops":
+        rows = db.table("shops").select("*").eq("id", world.b["shop_id"]).execute().data
+    elif table == "party_aliases":
+        rows = db.table("party_aliases").select("*").eq("party_id", world.b_party).execute().data
+    else:
+        rows = db.table(table).select("*").eq("shop_id", world.b["shop_id"]).execute().data
+    assert rows == []
+    # Unfiltered reads return only A's rows.
+    all_rows = db.table(table).select("*").execute().data
+    _no_b(world, all_rows)
+
+
+@pytest.mark.parametrize("table, row", [
+    ("parties", lambda w: {"shop_id": w.b["shop_id"], "kind": "customer", "display_name": "X", "name_latin": "x"}),
+    ("entries", lambda w: {"shop_id": w.b["shop_id"], "type": "cash_sale", "amount_paise": 1, "source": "manual"}),
+    ("receipts", lambda w: {"shop_id": w.b["shop_id"], "image_path": "x", "kind": "expense", "ocr_lang_first": "en-IN"}),
+    ("voice_notes", lambda w: {"shop_id": w.b["shop_id"], "audio_path": "x", "spoken_lang": "en-IN", "purpose": "entry"}),
+    ("weekly_insights", lambda w: {"shop_id": w.b["shop_id"], "week_start": "2026-01-05", "metrics": {}, "narration_en": "x"}),
+    ("party_aliases", lambda w: {"party_id": w.b_party, "alias_latin": "evil"}),
+    ("audit_log", lambda w: {"shop_id": w.b["shop_id"], "entry_id": w.b_entry["id"], "action": "edit"}),
+    ("shops", lambda w: {"name": "Mine now"}),
+    ("shop_members", lambda w: {"shop_id": w.b["shop_id"], "user_id": w.a["id"], "role": "owner", "lang": "en-IN"}),
+])
+def test_a_cannot_insert_into_b(world, table, row):
+    with pytest.raises(APIError):
+        user_client(world.a["token"]).table(table).insert(row(world)).execute()
+
+
+@pytest.mark.parametrize("table, id_col, id_attr, change", [
+    ("parties", "id", "b_party", {"display_name": "Hacked"}),
+    ("entries", "id", "b_entry.id", {"amount_paise": 1}),
+    ("receipts", "id", "b_receipt.id", {"vendor_name": "Hacked"}),
+    ("voice_notes", "id", "b_note.id", {"transcript_en": "Hacked"}),
+    ("shops", "id", "b.shop_id", {"name": "Hacked"}),
+    ("shop_members", "user_id", "b.id", {"lang": "ta-IN"}),
+    ("weekly_insights", "shop_id", "b.shop_id", {"narration_en": "Hacked"}),
+])
+def test_a_cannot_update_or_delete_b(world, table, id_col, id_attr, change):
+    obj = world
+    for part in id_attr.split("."):
+        obj = obj[part] if isinstance(obj, dict) else getattr(obj, part)
+    db = user_client(world.a["token"])
+    assert db.table(table).update(change).eq(id_col, obj).execute().data == []
+    assert db.table(table).delete().eq(id_col, obj).execute().data == []
+    still = admin_client().table(table).select("*").eq(id_col, obj).execute().data
+    assert still, f"{table} row was deleted"
+    for k, v in change.items():
+        assert still[0][k] != v, f"{table}.{k} was changed"
+
+
+def test_a_cannot_touch_b_storage(world):
+    """Buckets are private with no storage policies: a user token can't sign or read B's files."""
+    db = user_client(world.a["token"])
+    for bucket, path in (("voice", world.audio_path), ("receipts", world.image_path)):
+        with pytest.raises(Exception):
+            res = db.storage.from_(bucket).create_signed_url(path, 60)
+            if not (res.get("signedURL") or res.get("signedUrl")):
+                raise RuntimeError("no url")
+        with pytest.raises(Exception):
+            db.storage.from_(bucket).download(path)

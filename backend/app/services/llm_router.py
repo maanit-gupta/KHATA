@@ -24,13 +24,32 @@ import re
 from dataclasses import dataclass
 from typing import Any, Callable, Protocol
 
-from groq import Groq
+from groq import APIStatusError, Groq
+
+from ..errors import AppError
+from .retry import with_backoff
 
 PARSE_MODEL = "openai/gpt-oss-20b"   # supports strict json_schema
 QA_MODEL = "openai/gpt-oss-120b"     # tool calling for Q&A
 MAX_TOOL_ROUNDS = 4
 
-groq = Groq()  # reads GROQ_API_KEY from env
+# Reads GROQ_API_KEY from env. SDK retries off: services/retry.py owns 429/503 backoff (CLAUDE.md §8).
+groq = Groq(max_retries=0)
+
+
+def _groq_status(e: Exception) -> int | None:
+    return e.status_code if isinstance(e, APIStatusError) else None
+
+
+def _complete(**kwargs: Any) -> Any:
+    """groq.chat.completions.create with the 1 s / 2 s / 4 s backoff. `groq` is looked up per call
+    so tests can swap in a fake transport."""
+    try:
+        return with_backoff(lambda: groq.chat.completions.create(**kwargs), _groq_status)
+    except AppError:
+        raise
+    except Exception as e:
+        raise AppError(502, "reasoning_failed", "Couldn't work that out. Try again.") from e
 
 
 # ---------------------------------------------------------------------------
@@ -88,7 +107,7 @@ class ParsedEntry:
 
 
 def parse_entry(transcript: str, today_iso: str) -> ParsedEntry:
-    resp = groq.chat.completions.create(
+    resp = _complete(
         model=PARSE_MODEL,
         temperature=0,
         messages=[
@@ -216,7 +235,7 @@ def answer(question_en: str, shop_id: str, today_iso: str,
         {"role": "user", "content": question_en},
     ]
     for _ in range(MAX_TOOL_ROUNDS):
-        resp = groq.chat.completions.create(
+        resp = _complete(
             model=QA_MODEL, temperature=0.1, messages=messages,
             tools=QA_TOOLS, tool_choice="auto",
         )
@@ -276,7 +295,7 @@ def narrate_insights(metrics: dict[str, Any]) -> str:
     """metrics comes from daily_summary / party_balances, e.g.
     {"week_cash_sales": 41200, "prev_week_cash_sales": 38000,
      "overdue": [{"name": "Ramesh", "balance": 2300, "days": 34}]}"""
-    resp = groq.chat.completions.create(
+    resp = _complete(
         model=PARSE_MODEL, temperature=0.3,
         messages=[
             {"role": "system", "content":

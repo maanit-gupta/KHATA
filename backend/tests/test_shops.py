@@ -90,10 +90,10 @@ def test_shop_isolation(client, users):
     assert db_a.table("shop_members").select("user_id").eq("shop_id", shop_b["id"]).execute().data == []
 
 
-@pytest.mark.parametrize("column", ["shop_id", "role"])
+@pytest.mark.parametrize("column", ["shop_id", "user_id", "role"])
 def test_member_cannot_tamper_with_membership(client, users, column):
-    """migrations/001_lock_shop_members.sql: a direct PostgREST update of shop_id or role
-    must be refused even though member_self lets the row be updated."""
+    """P1.3 / migrations/001_lock_shop_members.sql: a direct PostgREST update of shop_id, user_id
+    or role must be refused even though member_self lets the row be updated (lang/tts_voice)."""
     a, b = users.new(), users.new()
     shop_a = _create(client, a, "Shop A").json()["shop"]
     users.track_shop(shop_a["id"])
@@ -102,9 +102,13 @@ def test_member_cannot_tamper_with_membership(client, users, column):
     client.post("/shops/join", json={"code": shop_a["invite_code"], "lang": "en-IN"}, headers=staff["headers"])
     target_shop = client.get("/me", headers=b["headers"]).json()["shop"]["id"]
 
-    change = {"shop_id": target_shop} if column == "shop_id" else {"role": "owner"}
+    change = {"shop_id": {"shop_id": target_shop}, "user_id": {"user_id": b["id"]},
+              "role": {"role": "owner"}}[column]
     with pytest.raises(APIError):
         user_client(staff["token"]).table("shop_members").update(change).eq("user_id", staff["id"]).execute()
 
     row = admin_client().table("shop_members").select("shop_id, role").eq("user_id", staff["id"]).execute().data[0]
     assert row == {"shop_id": shop_a["id"], "role": "staff"}
+    # The allowed columns still work through the same policy.
+    ok = user_client(staff["token"]).table("shop_members").update({"lang": "ml-IN"}).eq("user_id", staff["id"]).execute()
+    assert ok.data and ok.data[0]["lang"] == "ml-IN"

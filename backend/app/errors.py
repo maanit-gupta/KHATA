@@ -8,6 +8,7 @@ import logging
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from postgrest.exceptions import APIError as PostgrestError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 log = logging.getLogger("khata")
@@ -20,6 +21,17 @@ class AppError(Exception):
 
 def _body(code: str, message: str) -> dict:
     return {"error": {"code": code, "message": message}}
+
+
+PG_ERRORS = {
+    "22P02": (422, "invalid_request", "One of the values isn't in the right format. Check it and try again."),
+    "22007": (422, "bad_date", "Enter the date like 2026-09-26."),
+    "22008": (422, "bad_date", "Enter the date like 2026-09-26."),
+    "23503": (422, "invalid_reference", "That customer, supplier or bill doesn't exist."),
+    "23505": (409, "already_exists", "That already exists."),
+    "23514": (422, "invalid_request", "Those values aren't allowed together. Check them and try again."),
+    "42501": (403, "forbidden", "You can only change your own shop's book."),
+}
 
 
 def install_error_handlers(app: FastAPI) -> None:
@@ -41,6 +53,15 @@ def install_error_handlers(app: FastAPI) -> None:
         if exc.status_code == 405:
             return JSONResponse(_body("method_not_allowed", "That action is not supported here."), 405)
         return JSONResponse(_body("http_error", str(exc.detail)), status_code=exc.status_code)
+
+    @app.exception_handler(PostgrestError)
+    async def db_error(_: Request, exc: PostgrestError):
+        # Input checks should catch these first; this keeps any that slip through plain-English.
+        status, code, message = PG_ERRORS.get(exc.code or "", (None, None, None))
+        if status is None:
+            log.error("database error %s", exc.code)
+            status, code, message = 500, "server_error", "Something went wrong on our side. Try again."
+        return JSONResponse(_body(code, message), status_code=status)
 
     @app.exception_handler(Exception)
     async def unhandled(_: Request, exc: Exception):
