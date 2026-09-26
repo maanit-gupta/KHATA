@@ -6,6 +6,7 @@ import { AppShell, Placeholder, SettingsPlaceholder } from './screens/AppShell'
 import { AuthScreen } from './screens/AuthScreen'
 import { LedgerScreen } from './screens/LedgerScreen'
 import { PartiesScreen, PartyDetailScreen } from './screens/PartiesScreen'
+import { ScanScreen } from './screens/ScanScreen'
 import { OnboardingScreen } from './screens/OnboardingScreen'
 import { t } from './strings/en'
 
@@ -44,7 +45,7 @@ export function App() {
             <Route path="parties/:id" element={<PartyDetailScreen />} />
             <Route path="review" element={<Placeholder title={t.screens.review} />} />
             <Route path="entries/:id" element={<Placeholder title={t.screens.entry} />} />
-            <Route path="scan" element={<Placeholder title={t.screens.scan} />} />
+            <Route path="scan" element={<ScanScreen />} />
             <Route path="settings" element={<SettingsPlaceholder />} />
           </Route>
         </Route>

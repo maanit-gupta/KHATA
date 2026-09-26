@@ -8,6 +8,7 @@ import { ChipButton, CountBadge, NavChip } from './Chip'
 const ITEMS = [
   { to: '/app', label: t.nav.ledger, end: true },
   { to: '/app/parties', label: t.nav.parties },
+  { to: '/app/scan', label: t.nav.scan },
   { to: '/app/review', label: t.nav.review, review: true },
   { to: '/app/settings', label: t.nav.settings },
 ] as const
