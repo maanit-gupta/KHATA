@@ -277,6 +277,18 @@ export const en = {
     supplier: 'Supplier',
   },
 
+  week: {
+    heading: ['This week,', 'so far.'],
+    cash: 'Cash sales',
+    credit: 'Credit given',
+    collected: 'Collected',
+    expenses: 'Expenses',
+    lastWeek: (amount: string) => `Last week, Mon–Sun: ${amount}`,
+    debtors: 'Owes the most',
+    days: (n: number | null) => (n === null ? '' : n === 0 ? 'Last entry today' : n === 1 ? 'Last entry 1 day ago' : `Last entry ${n} days ago`),
+    play: 'Play the summary',
+  },
+
   review: {
     pendingTitle: 'Waiting for a tap',
     partiesTitle: 'New people',

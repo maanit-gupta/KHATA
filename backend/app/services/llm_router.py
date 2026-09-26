@@ -380,15 +380,18 @@ def receipt_fields(ocr_text: str) -> dict:
 # 4) Insight narration — SQL computes, Groq only phrases
 # ---------------------------------------------------------------------------
 def narrate_insights(metrics: dict[str, Any]) -> str:
-    """metrics comes from daily_summary / party_balances, e.g.
-    {"week_cash_sales": 41200, "prev_week_cash_sales": 38000,
-     "overdue": [{"name": "Ramesh", "balance": 2300, "days": 34}]}"""
+    """metrics comes from daily_summary / party_balances, in RUPEES (CLAUDE.md §9b), e.g.
+    {"this_week_so_far": {"cash_sales_rupees": 1250.5, ...}, "last_week": {...},
+     "top_debtors": [{"name": "Ramesh", "owes_rupees": 2300, "days_since_last_activity": 34}]}
+    The caller checks every number in the reply against these metrics (number guard)."""
     resp = _complete(
         model=PARSE_MODEL, temperature=0.3,
         messages=[
             {"role": "system", "content":
                 "Summarise these shop metrics in 3 short spoken sentences for the owner. "
-                "Use only the numbers given, copied exactly. Mention one action they could take."},
+                "The week is not over yet, so say 'so far'. Amounts are in rupees: write them as "
+                "digits followed by the word rupees. Use only the numbers given, copied exactly; "
+                "never add, subtract, round or give percentages. Mention one action they could take."},
             {"role": "user", "content": json.dumps(metrics)},
         ],
     )

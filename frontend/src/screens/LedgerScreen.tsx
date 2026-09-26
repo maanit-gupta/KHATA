@@ -175,7 +175,7 @@ function EntryResult({ result, busy, onResolve, onConfirm, answer, onTooShort, o
         <>
           <p className="flex items-center gap-3 t-label">
             <StatusSquare status={e.status} />
-            {t.entryTypes[e.type]}
+            {t.entryTypes[e.type]} · {t.status[e.status]}
             {e.auto_saved && e.status === 'confirmed' && <span>· {t.status.auto}</span>}
           </p>
           <p className="mt-3 t-amount">{formatPaise(e.amount_paise)}</p>

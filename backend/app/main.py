@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .config import get_settings
 from .errors import install_error_handlers
-from .routers import entries, me, media, parties, receipts, review, shops, tts, voice
+from .routers import entries, insights, me, media, parties, receipts, review, shops, tts, voice
 
 logging.basicConfig(level=logging.INFO)
 
@@ -35,3 +35,4 @@ app.include_router(receipts.router)
 app.include_router(review.router)
 app.include_router(media.router)
 app.include_router(tts.router)
+app.include_router(insights.router)
