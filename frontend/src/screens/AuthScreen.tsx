@@ -92,6 +92,9 @@ export function AuthScreen({ mode }: { mode: Mode }) {
         <Link to={signup ? '/login' : '/signup'} className="inline-flex min-h-12 items-center self-start t-label underline decoration-1 underline-offset-4">
           {signup ? t.auth.toLogin : t.auth.toSignup}
         </Link>
+        <Link to="/about" className="inline-flex min-h-12 items-center self-start t-label underline decoration-1 underline-offset-4">
+          {t.about.link}
+        </Link>
       </form>
     </SplitLayout>
   )
