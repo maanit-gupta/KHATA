@@ -1,5 +1,38 @@
 # PROGRESS.md
 
+# Run 2 (GOAL_2.0.md) — branch `goal/khata-2`, from `goal/complete-khata` (not merged into `main`)
+
+## Live API call tally (run 2)
+
+| Service | Budget | Used | Log |
+|---|---|---|---|
+| Sarvam (every HTTP call counted: STT, TTS, translate, Document AI start/status/results) | 150 | 0 | |
+| Groq | 200 | 0 | |
+
+## Tasks
+
+### P0 Access, identity, loose ends
+- [x] **P0.1 Supabase access.** Connector lists 1 org / 1 project: `LedgerPro` `yspgbhgjdwbmxpnkgoeu` = `backend/.env` = deployed Vercel bundle. Counts: users 0, shops 0, members 0, entries 0, parties 0, voice_notes 0, receipts 0, storage objects 4. Render API `khata-api.onrender.com` → 503 "Service Suspended". D-046, D-047.
+- [x] **P0.2 Catalog checks** (`scripts/verify_db.sql` through the connector, 2026-09-26):
+
+  | check | ok |
+  |---|---|
+  | rls on shops / shop_members / parties / party_aliases / receipts / voice_notes / entries / audit_log / weekly_insights | true ×9 |
+  | security_invoker on party_balances / daily_summary / review_queue | true ×3 |
+  | trigger shop_members_no_tamper (migration 001) | true |
+  | trigger entries_audit + entries_audit_upd | true |
+  | bucket voice is private | true |
+  | bucket receipts is private | true |
+
+  Every row `ok`; no fix tasks needed.
+- [x] **P0.3 Migrations 001 + 002.** 001 already present (`block_membership_tamper` + `shop_members_no_tamper`). 002 applied via `apply_migration`; `entries_one_live_per_receipt` now in `pg_indexes`. D-048.
+- [ ] **P0.4 Orphaned recordings.** Preconditions proven by SQL (shop absent; 0 referencing rows). **Delete refused by the session's permission classifier**; not retried. Moved to NEEDS_HUMAN N-008 with the 4 file names. D-048.
+- [x] **P0.5 NEEDS_HUMAN.md rewritten.** Closed N-001, N-002, N-003 (DB half), N-004 with evidence; N-005 folded into N-011 (test material); `landing.builtFor` = "Built for Sarvam Campus Builds, September 2026."; new N-010 (Render suspended), N-011 (test material).
+
+---
+
+# Run 1 (GOAL.md) — archived
+
 ## Live API call tally
 
 | Service | Budget | Used | Log |
