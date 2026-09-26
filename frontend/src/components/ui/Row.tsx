@@ -20,6 +20,8 @@ type RowProps = {
   /** With onClick: render as a radio option (e.g. the language picker). */
   checked?: boolean
   as?: 'div' | 'li'
+  /** Controls beside the row's tap target (e.g. evidence ▶ / →), so buttons never nest. */
+  aside?: ReactNode
 }
 
 const EASE = [0.65, 0, 0.35, 1] as const
@@ -33,7 +35,7 @@ const STRIKE = '[&_*:not(:has(*))]:line-through'
  * Full-width hairline row with three aligned columns (DESIGN.md §5). Motion (§8): the hairline
  * draws left→right over 900ms, text wipes in with it, then the square pops 0.05→1 in 300ms.
  */
-export function Row({ status, children, right, auto, isNew, dark = false, index = 0, animate = false, onClick, checked, as = 'div' }: RowProps) {
+export function Row({ status, children, right, auto, isNew, dark = false, index = 0, animate = false, onClick, checked, as = 'div', aside }: RowProps) {
   const delay = (index * STAGGER_MS) / 1000
   const voided = status === 'voided'
   const Tag = as === 'li' ? motion.li : motion.div
@@ -87,19 +89,22 @@ export function Row({ status, children, right, auto, isNew, dark = false, index 
         animate={{ scaleX: 1 }}
         transition={{ duration: LINE_MS / 1000, ease: EASE, delay }}
       />
-      {onClick ? (
-        <button
-          type="button"
-          onClick={onClick}
-          role={checked === undefined ? undefined : 'radio'}
-          aria-checked={checked}
-          className={`${grid} w-full min-h-12 text-left`}
-        >
-          {body}
-        </button>
-      ) : (
-        <div className={grid}>{body}</div>
-      )}
+      <div className={aside ? 'flex items-center gap-2' : undefined}>
+        {onClick ? (
+          <button
+            type="button"
+            onClick={onClick}
+            role={checked === undefined ? undefined : 'radio'}
+            aria-checked={checked}
+            className={`${grid} w-full min-h-12 text-left`}
+          >
+            {body}
+          </button>
+        ) : (
+          <div className={`${grid} w-full`}>{body}</div>
+        )}
+        {aside && <div className="flex shrink-0 items-center gap-2">{aside}</div>}
+      </div>
     </Tag>
   )
 }

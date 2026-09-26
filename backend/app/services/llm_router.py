@@ -22,6 +22,7 @@ from __future__ import annotations
 import json
 import re
 from dataclasses import dataclass
+from decimal import Decimal, InvalidOperation
 from typing import Any, Callable, Protocol
 
 from groq import APIStatusError, Groq
@@ -57,7 +58,7 @@ def _complete(**kwargs: Any) -> Any:
 # every signature against https://docs.sarvam.ai/_mcp/server (SDK changes often).
 # ---------------------------------------------------------------------------
 class SarvamAdapter(Protocol):
-    def transcribe_to_english(self, audio: bytes, lang: str) -> str: ...  # STT, mode="translate"
+    def transcribe_to_english(self, audio: bytes, lang: str, mime: str = ..., filename: str = ...) -> str: ...  # STT, mode="translate"
     def translate(self, text: str, src: str, tgt: str) -> str: ...       # Mayura / Sarvam-Translate
     def speak(self, text: str, lang: str, voice: str | None) -> bytes: ...  # Bulbul, keep < 2500 chars
 
@@ -226,14 +227,39 @@ in at most 2 short sentences, because your answer will be translated and spoken 
 - You cannot create, edit or delete entries. If asked, tell the user to use the Add button."""
 
 
+QA_FALLBACK = "I could not answer that reliably. Try asking a different way."
+_NUMBER = re.compile(r"\d[\d,]*(?:\.\d+)?")
+
+
+def _decimals(text: str) -> set[Decimal]:
+    out = set()
+    for n in _NUMBER.findall(text):
+        try:
+            out.add(Decimal(n.replace(",", "")).normalize())
+        except InvalidOperation:
+            continue
+    return out
+
+
+def numbers_grounded(answer_text: str, sources: list[str]) -> bool:
+    """Every number in the answer must appear (by value) in a tool result or the question:
+    "every number spoken or shown comes from SQL" (GOAL.md §1.2)."""
+    allowed: set[Decimal] = set()
+    for src in sources:
+        allowed |= _decimals(src)
+    return _decimals(answer_text) <= allowed
+
+
 def answer(question_en: str, shop_id: str, today_iso: str,
            tools_impl: dict[str, Callable[..., Any]]) -> str:
     """tools_impl maps tool name -> function(shop_id, **args) that runs SQL and returns JSON-able data.
-    shop_id is injected by the server, never taken from the model, so one shop can't read another."""
+    shop_id is injected by the server, never taken from the model, so one shop can't read another.
+    The final answer is refused (QA_FALLBACK) if it states a number no tool returned."""
     messages: list[dict[str, Any]] = [
         {"role": "system", "content": QA_SYSTEM + f"\nToday is {today_iso}."},
         {"role": "user", "content": question_en},
     ]
+    evidence: list[str] = [question_en]
     for _ in range(MAX_TOOL_ROUNDS):
         resp = _complete(
             model=QA_MODEL, temperature=0.1, messages=messages,
@@ -241,7 +267,10 @@ def answer(question_en: str, shop_id: str, today_iso: str,
         )
         msg = resp.choices[0].message
         if not msg.tool_calls:
-            return (msg.content or "").strip()
+            text = (msg.content or "").strip()
+            if not text or not numbers_grounded(text, evidence):
+                return QA_FALLBACK
+            return text
 
         messages.append({"role": "assistant", "content": msg.content or "",
                          "tool_calls": [tc.model_dump() for tc in msg.tool_calls]})
@@ -252,9 +281,10 @@ def answer(question_en: str, shop_id: str, today_iso: str,
                 result = fn(shop_id, **args) if fn else {"error": "unknown tool"}
             except Exception as e:  # bad args or DB error -> let the model recover
                 result = {"error": str(e)}
-            messages.append({"role": "tool", "tool_call_id": tc.id,
-                             "content": json.dumps(result, default=str)})
-    return "I could not work that out. Try asking a different way."
+            content = json.dumps(result, default=str)
+            evidence.append(content)
+            messages.append({"role": "tool", "tool_call_id": tc.id, "content": content})
+    return QA_FALLBACK
 
 
 # ---------------------------------------------------------------------------
@@ -278,14 +308,35 @@ def localize_for_speech(answer_en: str, lang: str, sarvam: SarvamAdapter) -> str
     return translated
 
 
+@dataclass
+class QAResult:
+    question_en: str
+    reply_en: str
+    reply_local: str
+    audio: bytes | None
+
+
+NOT_HEARD_QUESTION = "I did not hear a question. Please ask again."
+
+
 def voice_question_pipeline(audio: bytes, shop_id: str, member: dict, today_iso: str,
-                            sarvam: SarvamAdapter, tools_impl: dict) -> tuple[str, bytes]:
-    """member = the caller's shop_members row: language is per user, not per shop."""
+                            sarvam: SarvamAdapter, tools_impl: dict, *, mime: str = "audio/webm",
+                            filename: str = "note.webm") -> QAResult:
+    """member = the caller's shop_members row: language is per user, not per shop.
+    STT (translate) -> answer with read-only tools -> localize + number guard -> TTS.
+    A translate or TTS failure falls back to English text / no audio; the answer still shows."""
     lang = member["lang"]
-    question_en = sarvam.transcribe_to_english(audio, lang)   # one call: speech -> English text
-    reply_en = answer(question_en, shop_id, today_iso, tools_impl)
-    reply_local = localize_for_speech(reply_en, lang, sarvam)
-    return reply_local, sarvam.speak(reply_local, lang, member.get("tts_voice"))
+    question_en = sarvam.transcribe_to_english(audio, lang, mime, filename)   # speech -> English text
+    reply_en = answer(question_en, shop_id, today_iso, tools_impl) if question_en.strip() else NOT_HEARD_QUESTION
+    try:
+        reply_local = localize_for_speech(reply_en, lang, sarvam)
+    except AppError:
+        reply_local = reply_en
+    try:
+        spoken = sarvam.speak(reply_local, lang, member.get("tts_voice"))
+    except AppError:
+        spoken = None
+    return QAResult(question_en, reply_en, reply_local, spoken)
 
 
 # ---------------------------------------------------------------------------

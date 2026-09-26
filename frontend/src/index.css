@@ -75,6 +75,12 @@
 @keyframes countdown-shrink { from { transform: scaleX(1); } to { transform: scaleX(0); } }
 @keyframes countdown-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 .countdown { transform-origin: left center; animation-timing-function: linear; animation-fill-mode: forwards; }
+/* Recording hairline (DESIGN.md §6.4): draws 0 → 1 over exactly 30 s, turns white at 25 s. */
+@keyframes countdown-warn { 0%, 83.33% { background-color: var(--cyan); } 83.34%, 100% { background-color: var(--paper); } }
+.countdown-record {
+  transform-origin: left center;
+  animation: countdown-grow 30s linear forwards, countdown-warn 30s step-end forwards;
+}
 
 /* Page transition: new content rises 20px as the --bone cover fades out (DESIGN.md §8). */
 @keyframes route-rise { from { transform: translateY(20px); } to { transform: translateY(0); } }

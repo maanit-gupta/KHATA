@@ -1,4 +1,3 @@
-import { useQuery } from '@tanstack/react-query'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Button, ButtonLink } from '../components/ui/Button'
 import { SegmentChip } from '../components/ui/Chip'
@@ -9,18 +8,12 @@ import { Toast, ToastAction } from '../components/ui/Toast'
 import { api } from '../lib/api'
 import { confirmEntry, useLedgerMutation, voidEntry, type Entry } from '../lib/ledger'
 import { formatPaise } from '../lib/money'
+import { useReceipt, type Kind, type Receipt } from '../lib/receipts'
 import { t } from '../strings/en'
 import { Screen } from './AppShell'
 
-type Kind = 'supplier' | 'customer' | 'expense'
-export type Receipt = {
-  receipt_id: string; status: 'queued' | 'processing' | 'done' | 'failed'; kind: Kind; settled: boolean | null
-  vendor_name: string | null; bill_date: string | null; total_paise: number | null
-  retried_in_english: boolean; error: string | null
-}
 type SaveResult = { decision: 'auto' | 'confirm'; entry: Entry; suggestion: string | null }
 
-const POLL_MS = 2000 // CLAUDE.md §6.3: the frontend polls GET /receipts/{id} every 2 s
 const UNDO_MS = 5000
 const KINDS: Kind[] = ['supplier', 'customer', 'expense']
 
@@ -30,16 +23,6 @@ function uploadReceipt({ file, kind, settled }: { file: File; kind: Kind; settle
   fd.append('kind', kind)
   if (settled !== null) fd.append('settled', String(settled))
   return api<{ receipt_id: string }>('/receipts', { method: 'POST', body: fd })
-}
-
-/** Polls a receipt every 2 s until OCR finishes (done or failed). */
-export function useReceipt(id: string | null) {
-  return useQuery({
-    queryKey: ['receipt', id],
-    queryFn: () => api<Receipt>(`/receipts/${id}`),
-    enabled: !!id,
-    refetchInterval: (q) => (q.state.data && ['done', 'failed'].includes(q.state.data.status) ? false : POLL_MS),
-  })
 }
 
 /** DESIGN.md §6.7: kind → settled → photo (reading strip) → editable dark form → saved. */

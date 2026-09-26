@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from './api'
+import { formatPaise } from './money'
+import { t } from '../strings/en'
 
 export type EntryType = 'credit_given' | 'payment_received' | 'cash_sale' | 'purchase_credit' | 'purchase_paid' | 'payment_made' | 'expense'
 export const ENTRY_TYPES: EntryType[] = ['credit_given', 'payment_received', 'cash_sale', 'purchase_credit', 'purchase_paid', 'payment_made', 'expense']
@@ -7,8 +9,10 @@ export const NO_PARTY_TYPES: EntryType[] = ['cash_sale', 'purchase_paid', 'expen
 
 export type Entry = {
   id: string; type: EntryType; amount_paise: number; status: 'pending' | 'confirmed' | 'voided'
-  party_id: string | null; party_name: string | null; note: string | null; occurred_on: string
-  auto_saved: boolean; review_reason: string | null; source: string; created_at: string
+  party_id: string | null; party_name: string | null; party_kind?: 'customer' | 'supplier' | null
+  note: string | null; occurred_on: string; auto_saved: boolean; review_reason: string | null
+  source: 'voice' | 'receipt' | 'manual'; created_at: string
+  receipt_id?: string | null; voice_note_id?: string | null
 }
 export type Party = {
   party_id: string; display_name: string; kind: 'customer' | 'supplier'
@@ -16,7 +20,7 @@ export type Party = {
 }
 export type VoiceResult = {
   decision: 'auto' | 'confirm' | 'clarify'; entry: Entry | null; suggestion: string | null
-  speech_text: string; audio_b64: string | null; voice_note_id: string; transcript_en: string
+  speech_text: string; audio_b64: string | null; voice_note_id: string; transcript_en: string | null
 }
 
 export const useEntries = () =>
@@ -28,17 +32,23 @@ export const useParties = () =>
 export const useParty = (id: string) =>
   useQuery({ queryKey: ['party', id], queryFn: () => api<{ party: Party; entries: Entry[] }>(`/parties/${id}`) })
 
-/** Any ledger write invalidates entries and balances. */
+/** Any ledger write invalidates what can show its effect: entries, balances, review, the week. */
 export function useLedgerMutation<A, R>(fn: (arg: A) => Promise<R>) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: fn,
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['entries'] })
-      qc.invalidateQueries({ queryKey: ['parties'] })
-      qc.invalidateQueries({ queryKey: ['party'] })
+      for (const key of ['entries', 'entry', 'parties', 'party', 'review', 'insights']) {
+        qc.invalidateQueries({ queryKey: [key] })
+      }
     },
   })
+}
+
+/** review_reason as a sentence ("amount above ₹5,000" → "Amount above ₹5,000"). */
+export function reasonText(reason: string | null | undefined): string {
+  if (!reason) return ''
+  return reason.charAt(0).toUpperCase() + reason.slice(1)
 }
 
 export const confirmEntry = (id: string) => api<Entry>(`/entries/${id}/confirm`, { method: 'POST' })
@@ -47,4 +57,11 @@ export const voidEntry = (id: string) => api<Entry>(`/entries/${id}/void`, { met
 export function playB64(b64: string | null) {
   if (!b64) return
   new Audio(`data:audio/mpeg;base64,${b64}`).play().catch(() => undefined)
+}
+
+/** Explicit wording, never a bare minus sign (DESIGN.md §6.8). + = they owe the shop. */
+export function balanceText(paise: number) {
+  if (paise > 0) return t.parties.owesYou(formatPaise(paise))
+  if (paise < 0) return t.parties.youOwe(formatPaise(-paise))
+  return t.parties.settled
 }
