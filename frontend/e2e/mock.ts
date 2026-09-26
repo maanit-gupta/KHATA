@@ -311,10 +311,7 @@ export class MockApi {
     }
 
     if (path === '/review') return ok(this.review())
-    if (path === '/insights/weekly') {
-      if (this.insights) return ok(this.insights)
-      return this.err(route, 404, 'not_found', 'That page or item does not exist.')
-    }
+    if (path === '/insights/weekly') return ok(this.insights ?? this.weekly())
     if (path === '/tts') return ok({ text: String(body.text), audio_b64: SILENT_MP3 })
     if (seg[0] === 'media') return ok({ url: `${API}/files/${seg[1]}/${seg[2]}` })
     if (seg[0] === 'files') return route.fulfill({ status: 200, contentType: seg[1] === 'voice' ? 'audio/mpeg' : 'image/png', body: '' })
@@ -322,6 +319,23 @@ export class MockApi {
   }
 
   nextReceipt: Partial<Receipt> | null = null
+
+  /** A plain default for GET /insights/weekly, computed from the mock's confirmed entries. */
+  weekly() {
+    const sum = (from: number, to: number) => {
+      const rows = this.entries.filter((e) => e.status === 'confirmed' && e.occurred_on >= today(to) && e.occurred_on <= today(from))
+      const total = (t: string) => rows.filter((e) => e.type === t).reduce((a, e) => a + e.amount_paise, 0)
+      return { cash_sales_paise: total('cash_sale'), credit_given_paise: total('credit_given'), collected_paise: total('payment_received'),
+        expenses_paise: total('expense'), purchases_paise: total('purchase_credit') + total('purchase_paid'),
+        supplier_paid_paise: total('payment_made'), entry_count: rows.length }
+    }
+    const debtors = this.parties.map((p) => this.partyRow(p)).filter((p) => p.balance_paise > 0)
+      .sort((a, b) => b.balance_paise - a.balance_paise).slice(0, 3)
+      .map((p) => ({ party_id: p.party_id, name: p.display_name, balance_paise: p.balance_paise, days_since_last_activity: 1 }))
+    const text = 'So far this week, the shop is on track.'
+    return { week_start: today(6), week_end: today(0), today: today(0), this_week: sum(0, 6), last_week: sum(7, 13),
+      top_debtors: debtors, narration: text, narration_en: text }
+  }
 
   private fromQueue(route: Route, queue: unknown[], what: string) {
     const next = queue.shift()

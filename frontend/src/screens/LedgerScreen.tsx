@@ -90,7 +90,7 @@ export function LedgerScreen() {
 
       <div className="flex flex-col gap-10 gutter-x py-10 app:col-span-2">
         {error && <p className="t-body-lg" role="alert">{error}</p>}
-        <div aria-live="polite">
+        <div aria-live="polite" className="empty:-mb-10">
           {result?.kind === 'entry' && (
             <EntryResult
               result={result.data}
@@ -170,7 +170,7 @@ function EntryResult({ result, busy, onResolve, onConfirm, answer, onTooShort, o
   const e = result.entry
   return (
     <section className="border-t border-ink pt-6" data-testid="result-card">
-      {result.transcript_en && <p className="mb-4 t-body text-muted">{t.ledger.heard(result.transcript_en)}</p>}
+      {result.transcript_en && <p className="mb-4 t-body">{t.ledger.heard(result.transcript_en)}</p>}
       {e ? (
         <>
           <p className="flex items-center gap-3 t-label">

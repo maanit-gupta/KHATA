@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { lastCall, open, shots } from './helpers'
+import { lastCall, open, SCREENS_DIR, shots } from './helpers'
 import { MockApi, SILENT_MP3, voiceResult } from './mock'
 
 /** Hold a hold-to-talk button for `ms` (Chromium's fake mic plays e2e/fixtures/voice.wav). */
@@ -53,7 +53,8 @@ test('voice entry: auto-saved with read-back, 5 s undo', async ({ page }) => {
   const upload = lastCall(m, 'POST', '/voice/entry')!
   expect(String((upload.body as Record<string, string>)._file)).toMatch(/audio\/webm/)
   await expect(page.getByRole('status').filter({ hasText: 'Saved · Ramesh · ₹250' })).toBeVisible()
-  await shots(page, 'P3-voice', 'auto-saved-undo')
+  // The toast lives 5 s, less than the full 390/1280 shot pass: one quick capture instead.
+  await page.screenshot({ path: `${SCREENS_DIR}P3-voice/auto-saved-undo-1280.png` })
   await page.getByRole('button', { name: 'Undo' }).click()
   await expect(page.getByText('Undone.')).toBeVisible()
   expect(lastCall(m, 'POST', '/entries/')?.path).toMatch(/\/void$/)
