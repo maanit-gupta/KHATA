@@ -4,6 +4,7 @@ SDK retries are disabled; we retry once on 429/503 ourselves."""
 from __future__ import annotations
 
 import base64
+import json
 import os
 import time
 from typing import Any, Callable
@@ -56,3 +57,29 @@ class Sarvam:
             speaker=voice or DEFAULT_VOICE.get(lang, "shubh"), pace=1.0,
             speech_sample_rate=24000, output_audio_codec="mp3", request_options=NO_RETRY))
         return base64.b64decode(resp.audios[0])
+
+    def extract_receipt(self, image: bytes, filename: str, mime: str, lang: str,
+                        timeout_s: float = 60, poll_s: float = 2) -> dict:
+        """Document AI extract, polled synchronously. Returns model_dump() of the results.
+        Raises AppError on failure or timeout."""
+        job = _call(lambda: self.client.doc_ai.extract(
+            file=[(filename, image, mime)], schema=json.dumps(RECEIPT_SCHEMA), language=lang,
+            output_format="json", request_options=NO_RETRY))
+        deadline = time.monotonic() + timeout_s
+        while True:
+            st = _call(lambda: self.client.doc_ai.get_status(job.job_id, request_options=NO_RETRY))
+            if st.status in ("completed", "partially_completed"):
+                break
+            if st.status in ("failed", "rejected"):
+                raise AppError(502, "ocr_failed", "Couldn't read that bill. Type the values below.")
+            if time.monotonic() > deadline:
+                raise AppError(504, "ocr_timeout", "Reading the bill took too long. Type the values below.")
+            time.sleep(poll_s)
+        res = _call(lambda: self.client.doc_ai.get_results(job.job_id, request_options=NO_RETRY))
+        return {"job_id": job.job_id, **res.model_dump(mode="json")}
+
+
+RECEIPT_SCHEMA = {"type": "object", "properties": {
+    "vendor_name": {"type": "string", "description": "Name of the shop or business that issued the bill, as printed at the top"},
+    "bill_date": {"type": "string", "description": "Bill date as printed"},
+    "total": {"type": "number", "description": "Final amount payable in INR (grand total after taxes), as a number"}}}

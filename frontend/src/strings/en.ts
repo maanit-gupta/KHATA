@@ -8,6 +8,7 @@ export const en = {
   nav: {
     ledger: 'Ledger',
     parties: 'Parties',
+    scan: 'Scan',
     review: 'Review',
     settings: 'Settings',
     menu: 'Menu',
@@ -109,6 +110,27 @@ export const en = {
     heard: (text: string) => `Heard: “${text}”`,
     play: '▶ Play',
     noParty: '—',
+  },
+
+  scan: {
+    supplier: 'Supplier',
+    customer: 'Customer',
+    expense: 'Expense',
+    paid: 'Paid',
+    credit: 'Credit',
+    cash: 'Cash',
+    udhaar: 'Udhaar',
+    photo: 'Photo of the bill (JPG or PNG)',
+    reading: 'Reading the bill…',
+    typeByHand: 'Type the values from the bill.',
+    vendor: 'Vendor',
+    date: 'Bill date',
+    total: 'Total (₹)',
+    customerName: 'Customer name',
+    save: 'Save',
+    saved: 'Saved.',
+    pending: 'Saved as pending. Confirm it on the ledger.',
+    another: 'Scan another bill',
   },
 
   entryTypes: {
