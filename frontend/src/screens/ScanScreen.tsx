@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { useSearchParams } from 'react-router'
 import { Button, ButtonLink } from '../components/ui/Button'
 import { SegmentChip } from '../components/ui/Chip'
 import { Field } from '../components/ui/Field'
@@ -27,10 +28,12 @@ function uploadReceipt({ file, kind, settled }: { file: File; kind: Kind; settle
 
 /** DESIGN.md §6.7: kind → settled → photo (reading strip) → editable dark form → saved. */
 export function ScanScreen() {
+  const [params] = useSearchParams()
+  const fromReview = params.get('receipt') // Review → ENTER MANUALLY: open that bill's form directly
   const [kind, setKind] = useState<Kind | null>(null)
   const [settled, setSettled] = useState<boolean | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
-  const [receiptId, setReceiptId] = useState<string | null>(null)
+  const [receiptId, setReceiptId] = useState<string | null>(fromReview)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
   const [result, setResult] = useState<SaveResult | null>(null)
@@ -60,6 +63,15 @@ export function ScanScreen() {
   }
 
   if (result) return <Saved result={result} onAnother={reset} />
+
+  if (fromReview && receiptId === fromReview) {
+    return (
+      <Screen title={t.scan.checkHeading}>
+        {receipt.error && <p className="t-body-lg" role="alert">{receipt.error.message}</p>}
+        {receipt.data && <BillForm receipt={receipt.data} preview={null} onSaved={setResult} />}
+      </Screen>
+    )
+  }
 
   if (!kind) {
     return (
