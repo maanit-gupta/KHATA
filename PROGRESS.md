@@ -39,3 +39,10 @@
 - [x] **P4.2 POST /voice/ask.** Via `voice_question_pipeline`; audio + `voice_notes` row with `purpose='question'`. Number guard on the final answer (D-020).
 - [x] **P4.3 Frontend.** HOLD TO ASK (same `HoldButton` recording visuals) and an answer card with the ▶ square; audio auto-plays.
 - AC: every number from a tool (`::test_every_number_in_the_answer_must_come_from_a_tool` → fallback), delete → Add-button reply (`::test_delete_request...`), ambiguous → which one (`::test_ambiguous_name_asks_which_one`), no writes (row counts and entry states unchanged), §12.5 Tamil answer = party_balances (`::test_12_5...`). Isolation case for `/voice/ask` and `/voice/entry/resolve` added.
+
+### P5 Screens the spec requires
+- [x] **P5.1 Review queue.** `ReviewScreen`: pending entries (CONFIRM → / EDIT), new parties (RENAME / MERGE INTO… / KEEP AS IS, D-025), failed bills (ENTER MANUALLY →, D-026). REVIEW nav chip shows the count (cyan square). E2E: `e2e/review.spec.ts` (4 tests). Screens: `artifacts/screens/P5.1-review/`.
+- [x] **P5.2 Entry edit + history.** `EntryScreen`: dark form with type/amount/party/date/note, SAVE CHANGES →, history from `audit_log` ("You"/"Another member", IST time, old → new), VOID ENTRY with confirmation. Ledger rows open it. E2E: `e2e/entry.spec.ts` (3). Screens: `artifacts/screens/P5.2-entry/`.
+- [x] **P5.3 Settings.** Language (PATCH /me), voice picker (varun hidden; selecting PATCHes then plays "Ramesh owes you 250 rupees." via POST /tts, localized server-side, D-006/D-027), invite code with COPY chip (all members), LOG OUT. E2E: `e2e/settings.spec.ts`. Screens: `artifacts/screens/P5.3-settings/`.
+- [x] **P5.4 Party detail evidence.** ▶ plays the original audio via GET /media/voice/{id} (signed 10 min); → opens the bill photo via GET /media/receipts/{id}; balance always "OWES YOU ₹X" / "YOU OWE ₹X" in Amount style. E2E: `e2e/party.spec.ts` (2). Screens: `artifacts/screens/P5.4-party/`.
+- E2E result: 10 passed (`npx playwright test e2e/review.spec.ts e2e/entry.spec.ts e2e/settings.spec.ts e2e/party.spec.ts`).

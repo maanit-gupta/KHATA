@@ -3,17 +3,17 @@ import { Outlet } from 'react-router'
 import { AppNav } from '../components/ui/AppNav'
 import { Header } from '../components/ui/Header'
 import { H2 } from '../components/ui/H2'
-import { Row } from '../components/ui/Row'
 import { exitDemo, isDemo } from '../lib/demo'
-import { supabase } from '../lib/supabase'
+import { useReview } from '../lib/review'
 import { t } from '../strings/en'
 
 /** In-app chrome: --bone header with the nav chips; screens render below it. */
 export function AppShell() {
+  const review = useReview()
   return (
     <div className="min-h-dvh bg-paper">
       <Header home="/app">
-        <AppNav />
+        <AppNav reviewCount={review.data?.count ?? 0} />
       </Header>
       <main className="pt-14">
         {isDemo() && (
@@ -35,22 +35,5 @@ export function Screen({ title, children }: { title: readonly string[]; children
       <H2 lines={title} as="h1" />
       {children && <div className="app:col-span-2">{children}</div>}
     </div>
-  )
-}
-
-export function Placeholder({ title }: { title: readonly string[] }) {
-  return <Screen title={title} />
-}
-
-/** Settings is a placeholder too, plus LOG OUT (DESIGN.md §6.12) so sessions can be ended. */
-export function SettingsPlaceholder() {
-  return (
-    <Screen title={t.screens.settings}>
-      <div className="border-b border-ink">
-        <Row status="unselected" onClick={() => (isDemo() ? exitDemo() : supabase.auth.signOut())}>
-          <span className="t-label-lg">{t.screens.logOut}</span>
-        </Row>
-      </div>
-    </Screen>
   )
 }

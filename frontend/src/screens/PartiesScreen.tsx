@@ -26,7 +26,7 @@ export function PartiesScreen() {
     <Screen title={t.screens.parties}>
       <div className="mb-8 flex flex-col gap-4">
         <Field label={t.parties.search} type="search" value={q} onChange={(e) => setQ(e.target.value)} autoComplete="off" />
-        <div className="flex gap-2" role="group" aria-label={t.parties.search}>
+        <div className="flex gap-2" role="group" aria-label={t.parties.filter}>
           {(['customer', 'supplier'] as const).map((k) => (
             <SegmentChip key={k} selected={kind === k} onClick={() => setKind(kind === k ? null : k)}>
               {k === 'customer' ? t.parties.customers : t.parties.suppliers}

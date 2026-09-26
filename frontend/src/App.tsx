@@ -2,7 +2,10 @@ import { lazy, Suspense } from 'react'
 import { Navigate, Route } from 'react-router'
 import { PublicOnly, RequireSessionWithoutShop, RequireShop } from './auth/guards'
 import { TransitionRoutes } from './components/ui/PageTransition'
-import { AppShell, Placeholder, SettingsPlaceholder } from './screens/AppShell'
+import { AppShell } from './screens/AppShell'
+import { EntryScreen } from './screens/EntryScreen'
+import { ReviewScreen } from './screens/ReviewScreen'
+import { SettingsScreen } from './screens/SettingsScreen'
 import { AboutScreen } from './screens/AboutScreen'
 import { AuthScreen } from './screens/AuthScreen'
 import { LedgerScreen } from './screens/LedgerScreen'
@@ -45,10 +48,10 @@ export function App() {
             <Route index element={<LedgerScreen />} />
             <Route path="parties" element={<PartiesScreen />} />
             <Route path="parties/:id" element={<PartyDetailScreen />} />
-            <Route path="review" element={<Placeholder title={t.screens.review} />} />
-            <Route path="entries/:id" element={<Placeholder title={t.screens.entry} />} />
+            <Route path="review" element={<ReviewScreen />} />
+            <Route path="entries/:id" element={<EntryScreen />} />
             <Route path="scan" element={<ScanScreen />} />
-            <Route path="settings" element={<SettingsPlaceholder />} />
+            <Route path="settings" element={<SettingsScreen />} />
           </Route>
         </Route>
         {DevUI && <Route path="/dev/ui" element={<DevUI />} />}
