@@ -127,3 +127,35 @@ test('keyboard only: the MENU overlay opens, traps Escape, and navigates', async
   await menu.getByRole('link', { name: /Review/ }).click()
   await expect(page).toHaveURL(/\/app\/review$/)
 })
+
+for (const [name, path, signedIn] of SCREENS) {
+  test(`keyboard walk: ${name} — every control reachable by Tab, each with a visible ring`, async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await page.setViewportSize({ width: 1280, height: 900 })
+    const m = shop()
+    m.signedIn = signedIn
+    await open(page, m, path)
+    await settle(page)
+    const controls = await page.$$eval('button:not([disabled]), a[href], input:not([type=hidden]):not([disabled]), [role=radio]', (els) =>
+      els.filter((el) => {
+        const r = el.getBoundingClientRect()
+        return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== 'hidden' && !el.closest('[aria-hidden=true]')
+      }).length)
+    const reached = new Set<string>()
+    for (let i = 0; i < controls + 5; i++) {
+      await page.keyboard.press('Tab')
+      const info = await page.evaluate(() => {
+        const el = document.activeElement as HTMLElement | null
+        if (!el || el === document.body) return null
+        const s = getComputedStyle(el)
+        const key = `${el.tagName}|${el.getAttribute('aria-label') ?? ''}|${(el.textContent ?? '').trim().slice(0, 40)}|${Math.round(el.getBoundingClientRect().top + window.scrollY)}`
+        return { key, ring: s.outlineStyle !== 'none' && parseFloat(s.outlineWidth) >= 2 }
+      })
+      if (!info) continue
+      expect(info.ring, `focus ring on ${info.key}`).toBe(true)
+      reached.add(info.key)
+    }
+    // Every visible control got focus at least once (a file input hides inside its label).
+    expect(reached.size).toBeGreaterThanOrEqual(controls - (name === 'scan' ? 1 : 0))
+  })
+}

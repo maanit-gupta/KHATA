@@ -45,7 +45,10 @@
 
   /* Visible square focus ring: 2px ink, offset 2px. On dark panels ink is invisible, so white. */
   :focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
-  .on-dark :focus-visible { outline-color: var(--paper); }
+  /* Date inputs move focus into their day/month/year segments, so :focus-visible never matches
+     the input itself; ring the whole field instead. */
+  input[type="date"]:focus-within { outline: 2px solid var(--ink); outline-offset: 2px; }
+  .on-dark :focus-visible, .on-dark input[type="date"]:focus-within { outline-color: var(--paper); }
   :focus:not(:focus-visible) { outline: none; }
 }
 
