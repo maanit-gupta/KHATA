@@ -3,6 +3,7 @@ import { Navigate, Route } from 'react-router'
 import { PublicOnly, RequireSessionWithoutShop, RequireShop } from './auth/guards'
 import { TransitionRoutes } from './components/ui/PageTransition'
 import { AppShell, Placeholder, SettingsPlaceholder } from './screens/AppShell'
+import { AboutScreen } from './screens/AboutScreen'
 import { AuthScreen } from './screens/AuthScreen'
 import { LedgerScreen } from './screens/LedgerScreen'
 import { PartiesScreen, PartyDetailScreen } from './screens/PartiesScreen'
@@ -31,6 +32,7 @@ export function App() {
       <TransitionRoutes>
         {/* The public landing page (DESIGN.md §7) is a later step; until then / goes to log in. */}
         <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="/about" element={<AboutScreen />} />
         <Route element={<PublicOnly />}>
           <Route path="/login" element={<AuthScreen mode="login" />} />
           <Route path="/signup" element={<AuthScreen mode="signup" />} />

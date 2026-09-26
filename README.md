@@ -7,6 +7,8 @@ A voice and receipt ledger for kirana shops, in six Indian languages.
 
 [![Try the live demo](https://img.shields.io/badge/▶_Try_the_live_demo-no_login_needed-111?style=for-the-badge)](https://khata-alpha.vercel.app/demo)
 &nbsp;
+[![How it works](https://img.shields.io/badge/How_it_works-/about-E8E9ED?style=for-the-badge&labelColor=111)](https://khata-alpha.vercel.app/about)
+&nbsp;
 [![Open the app](https://img.shields.io/badge/Open_the_app-khata--alpha.vercel.app-B8F3FF?style=for-the-badge&labelColor=111)](https://khata-alpha.vercel.app)
 
 ![React](https://img.shields.io/badge/React_+_Vite-TypeScript-3178C6?logo=react&logoColor=white)
@@ -29,6 +31,7 @@ can be photographed instead of typed.
 | | Link | Login |
 |---|---|---|
 | **Demo mode** (recommended) | **[khata-alpha.vercel.app/demo](https://khata-alpha.vercel.app/demo)** | None. Opens straight into a sample shop |
+| **How it works** | [khata-alpha.vercel.app/about](https://khata-alpha.vercel.app/about) | None. A walkthrough of the whole flow |
 | **Real account** | [khata-alpha.vercel.app/signup](https://khata-alpha.vercel.app/signup) | Sign up with any email (no confirmation email) |
 
 > [!NOTE]
