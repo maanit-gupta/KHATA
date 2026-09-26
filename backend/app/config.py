@@ -22,6 +22,9 @@ def _load_env_file(path: Path) -> None:
         os.environ.setdefault(key.strip(), value.strip().strip("'\""))
 
 
+_load_env_file(ENV_FILE)  # at import, so SDK clients created at import (Groq) see the keys
+
+
 @dataclass(frozen=True)
 class Settings:
     supabase_url: str
