@@ -25,6 +25,7 @@ from app.db import admin_client
 from app.main import app
 from app import ratelimit
 from app.services import llm_router, receipt_ocr, retry
+from app.services.llm_router import Heard
 from app.services import sarvam as sarvam_service
 
 
@@ -149,6 +150,7 @@ class FakeSarvam:
         self.doc_jobs: list[dict] = []
         self.keyterms: list = []
         self.jobs: dict[str, dict] = {}
+        self.audio: list[bytes] = []          # the exact bytes each STT call received
 
     def _maybe_fail(self, what: str) -> None:
         if what in self.fail:
@@ -157,10 +159,11 @@ class FakeSarvam:
     def transcribe_to_english(self, audio: bytes, lang: str, mime: str = "audio/webm",
                               filename: str = "note.webm", keyterms: list[str] | None = None) -> str:
         self.calls.append(("stt", lang, mime, filename))
+        self.audio.append(audio)
         self.keyterms.append(keyterms)
         self._maybe_fail("stt")
         assert self.transcripts, "test did not queue a transcript"
-        return self.transcripts.pop(0)
+        return Heard(self.transcripts.pop(0), None, "fake-request")
 
     def translate(self, text: str, src: str, tgt: str) -> str:
         self.calls.append(("translate", text, src, tgt))
@@ -172,12 +175,15 @@ class FakeSarvam:
         self._maybe_fail("tts")
         return b"ID3-fake-mp3"
 
-    # --- Document AI: each *_start call consumes the next scripted job from doc_jobs ---------
-    # A job: {"statuses": [...polled in order, last repeats], "results": {...}} or {"start_error": exc}
+    # --- Document AI: each *_start call consumes the next scripted job of its kind -----------
+    # A job: {"kind": "extract"|"digitise" (default extract), "statuses": [...polled in order, last
+    # repeats], "results": {...}} or {"kind": ..., "start_error": exc}
     def _start(self, kind: str, lang: str) -> str:
         self.calls.append((f"doc_{kind}", lang))
-        assert self.doc_jobs, f"test did not script a Document AI {kind} job"
-        job = self.doc_jobs.pop(0)
+        mine = [j for j in self.doc_jobs if j.get("kind", "extract") == kind]
+        assert mine, f"test did not script a Document AI {kind} job"
+        job = mine[0]
+        self.doc_jobs.remove(job)
         if "start_error" in job:
             raise job["start_error"]
         job_id = f"job-{len(self.jobs) + 1}"

@@ -4,7 +4,6 @@ import { useMe } from '../auth/hooks'
 import { ChipButton } from '../components/ui/Chip'
 import { Row } from '../components/ui/Row'
 import { api, type Membership } from '../lib/api'
-import { exitDemo, isDemo } from '../lib/demo'
 import { playB64 } from '../lib/ledger'
 import { supabase } from '../lib/supabase'
 import { DEFAULT_VOICE, voicesFor } from '../lib/voices'
@@ -104,7 +103,7 @@ export function SettingsScreen() {
             </div>
             <p className="mt-2 t-body">{t.settings.inviteHelp}</p>
           </div>
-          <Row status="unselected" onClick={() => (isDemo() ? exitDemo() : supabase.auth.signOut())}>
+          <Row status="unselected" onClick={() => supabase.auth.signOut()}>
             <span className="t-label-lg">{t.settings.logOut}</span>
           </Row>
         </section>

@@ -10,8 +10,9 @@ from typing import Any, Callable
 from sarvamai import SarvamAI
 from sarvamai.core.api_error import ApiError
 
-from ..constants import DEFAULT_VOICE
+from ..constants import DEFAULT_VOICE, TRANSLATE
 from ..errors import AppError
+from .llm_router import Heard
 from .retry import with_backoff
 
 NO_RETRY = {"max_retries": 0}
@@ -57,12 +58,17 @@ class Sarvam:
         resp = _call(lambda: self.client.speech_to_text.transcribe(
             file=(filename, audio, mime), mode="translate", language_code=lang,
             request_options=NO_RETRY, **extra), _speech_failed())
-        return (resp.transcript or "").strip()
+        # Exactly what Sarvam said, unprocessed (GOAL_2.0 P1.3); callers use .text (stripped).
+        return Heard(resp.transcript or "", getattr(resp, "language_code", None), getattr(resp, "request_id", None))
 
-    def translate(self, text: str, src: str, tgt: str) -> str:
+    def translate(self, text: str, src: str, tgt: str, model: str | None = None, mode: str | None = None) -> str:
+        """Model and mode come from constants.TRANSLATE per target language unless given."""
+        cfg = TRANSLATE.get(tgt, {"model": "mayura:v1", "mode": "modern-colloquial"})
+        model = model or cfg["model"]
+        mode = "formal" if model == "sarvam-translate:v1" else (mode or cfg["mode"])
         resp = _call(lambda: self.client.text.translate(
             input=text, source_language_code=src, target_language_code=tgt,
-            model="mayura:v1", mode="modern-colloquial", numerals_format="international",
+            model=model, mode=mode, numerals_format="international",
             request_options=NO_RETRY), _voice_failed())
         return resp.translated_text
 

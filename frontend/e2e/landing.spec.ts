@@ -27,13 +27,16 @@ test('landing: every DESIGN §7 section, nav chips, CTA', async ({ page }) => {
   await expect(page).toHaveURL(/\/signup$/)
 })
 
-test('landing: footer demo link opens the demo', async ({ page }) => {
+test('no demo mode: no demo links, /demo is not a route, and nothing canned answers (GOAL_2.0 P1.1)', async ({ page }) => {
   const m = new MockApi()
   m.signedIn = false
   await open(page, m, '/')
-  await page.getByRole('link', { name: 'Try the demo' }).click()
-  await expect(page).toHaveURL(/\/app$/)
-  await expect(page.getByText(/Demo mode/)).toBeVisible()
+  await expect(page.getByRole('link', { name: /demo/i })).toHaveCount(0)
+  await page.goto('/login')
+  await expect(page.getByRole('button', { name: /demo/i })).toHaveCount(0)
+  await page.goto('/demo')
+  await expect(page.getByText('That page does not exist.')).toBeVisible()
+  expect(await page.evaluate(() => sessionStorage.getItem('khata-demo'))).toBeNull()
 })
 
 test('reduced motion: no ripple animation, reveals instant, countdown still linear', async ({ page }) => {

@@ -136,7 +136,23 @@ def get_entry(entry_id: str, user: CurrentUser = Depends(current_user)):
     require_membership(user)
     db = user_client(user.token)
     entry = fetch_entry(db, entry_id)
-    return {"entry": entry, "history": _history(db, entry_id, user.id)}
+    return {"entry": entry, "history": _history(db, entry_id, user.id), **_evidence(db, entry)}
+
+
+def _evidence(db, entry: dict) -> dict:
+    """What the pipeline heard or read for this entry (GOAL_2.0 P1.3), so the shopkeeper can
+    check it any time, not only right after recording. RLS-scoped reads."""
+    out: dict = {"heard": None, "read": None}
+    if entry.get("voice_note_id"):
+        rows = (db.table("voice_notes").select("stt_raw, transcript_en, speech_text_en, speech_text_local, decision")
+                .eq("id", entry["voice_note_id"]).limit(1).execute().data)
+        out["heard"] = rows[0] if rows else None
+    if entry.get("receipt_id"):
+        rows = (db.table("receipts").select("ocr_text, raw_extract").eq("id", entry["receipt_id"]).limit(1).execute().data)
+        if rows:
+            out["read"] = {"ocr_text": rows[0]["ocr_text"],
+                           "total_check": (rows[0]["raw_extract"] or {}).get("total_check")}
+    return out
 
 
 @router.patch("/entries/{entry_id}")

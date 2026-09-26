@@ -6,8 +6,8 @@
 
 | Service | Budget | Used | Log |
 |---|---|---|---|
-| Sarvam (every HTTP call counted: STT, TTS, translate, Document AI start/status/results) | 150 | 0 | |
-| Groq | 200 | 0 | |
+| Sarvam (every HTTP call counted: STT, TTS, translate, Document AI start/status/results) | 150 | 97 | P1.4 harness run 1: 42 (6 TTS clips, 6 STT, 4 translate, 6 TTS read-backs, 3 bills 20); P1.4 bills re-run after the D-050 fix: 21; P1.5 comparison: 28 (18 translate, 6 TTS, 4 STT); P2 live UI scan: 6 |
+| Groq | 200 | 6 | P1.4 harness run 1: 6 parses |
 
 ## Tasks
 
@@ -28,6 +28,22 @@
 - [x] **P0.3 Migrations 001 + 002.** 001 already present (`block_membership_tamper` + `shop_members_no_tamper`). 002 applied via `apply_migration`; `entries_one_live_per_receipt` now in `pg_indexes`. D-048.
 - [ ] **P0.4 Orphaned recordings.** Preconditions proven by SQL (shop absent; 0 referencing rows). **Delete refused by the session's permission classifier**; not retried. Moved to NEEDS_HUMAN N-008 with the 4 file names. D-048.
 - [x] **P0.5 NEEDS_HUMAN.md rewritten.** Closed N-001, N-002, N-003 (DB half), N-004 with evidence; N-005 folded into N-011 (test material); `landing.builtFor` = "Built for Sarvam Campus Builds, September 2026."; new N-010 (Render suspended), N-011 (test material).
+
+### P1 Make speech and OCR tell the truth
+- [x] **P1.1 Leak hunt.** Culprit: demo mode (canned voice + bill results behind a sessionStorage flag, reachable from "Try the demo" on the login screen) — removed (D-049). Prompts: example amount removed from QA, example date from the Groq receipt schema; no party names anywhere. STT: no prompt/context parameter exists; kwargs pinned by a test. `tests/test_leaks.py` (20 tests) + `tests/leak_allowlist.json` (2 entries, each with a reason). Production bundle grepped clean. Regression: `e2e/landing.spec.ts` "no demo mode".
+- [x] **P1.2 Stale-data hunt.** Every candidate checked (table in D-049). Tests: (a) `e2e/stale.spec.ts` two known clips (440 Hz, 880 Hz) recorded back to back → uploads decode to 440 then 880 Hz, second not longer than itself; (c) same file: fresh object URL per read-back, old one revoked; (e) `tests/test_truth.py::test_stt_uses_the_speakers_language_not_the_shops`; also (b) no-store headers, (d) distinct paths + exact stored bytes, (f) mislabelled MP4 sent as audio/mp4, bytes unchanged.
+- [x] **P1.3 Observability.** Migration 003 applied (D-055). `voice_notes.stt_raw / decision / speech_text_en / speech_text_local` + `parsed`; `receipts.ocr_text` + `raw_extract` (with `total_check`). UI: WHAT I HEARD on every voice result card, the answer card and the entry screen; WHAT I READ on the scan form and bill entries (`components/ui/Disclosure.tsx`). **Live evidence:** after the harness run, the DB held every stage for 6 clips and 3 bills (e.g. stt_raw "Gurdeep was given ₹2600 as a loan." → parsed Gurdeep / 260000 → auto → "Gurdeep, 2,600 rupees उधार लिए, save कर लिए।"); screenshots of the real app on that data: `artifacts/screens/P1.3-observability/` (entry WHAT I HEARD in hi/ta, Hindi bill WHAT I READ). Tests: `tests/test_truth.py::test_every_stage_is_recorded_on_the_voice_note`, `::test_question_stages_are_recorded`, `test_receipts.py` (ocr_text stored separately), `e2e/truth.spec.ts` (3).
+- [x] **P1.4 Harness.** `backend/scripts/harness.py` → `artifacts/harness/report.md`. `test-material/` missing → synthetic (N-011). **Results: voice amount 6/6, party 6/6, type 6/6; bill totals 3/3 (vendor 3/3, date 3/3, total_check ok 3/3); example echoes 0.** Run 1 found D-050 (OCR text always empty); bills re-run after the fix.
+- [x] **P1.5 Speech output.** `constants.TRANSLATE` per language (default unchanged). `artifacts/tts-compare/` 6 MP3s + report. Pronunciation check: every amount heard back correctly (4 clips). N-009 for a native speaker. D-054.
+- [x] **P1.6 STT robustness.** Silence/filler → "I didn't catch that", nothing saved, no Groq call (`test_truth.py::test_silence_and_filler_transcripts_save_nothing`, `::test_heard_nothing_is_narrow`, `test_voice_ask.py::test_silence_does_not_call_groq`); auto-detect supported and wired (`speech_auto` → `language_code "unknown"`, `test_truth.py::test_auto_detect_sends_unknown_and_keeps_the_detected_language`). D-052, D-053.
+
+### P2 Scan and upload that actually works
+- [x] **P2.1 Capture.** Phones: TAKE A PHOTO opens the camera (`capture="environment"`, `accept="image/*"`) + a separate UPLOAD FROM GALLERY link. Desktop: CHOOSE A FILE + drag-and-drop zone. JPG/PNG as-is; HEIC converted where the browser decodes it, otherwise a clear message; one-page PDF sent as-is (D-056). `lib/photo.ts`.
+- [x] **P2.2 Preview.** Full-width preview, USE THIS PHOTO / RETAKE / TURN 90° (re-encoded JPEG); "Photo too dark or small; retake for better reading." when mean luminance < 60 or the short edge < 600 px, and sending anyway works.
+- [x] **P2.3 Progress.** UPLOADING → READING THE BILL → CHECKING from real job stages; CANCEL; TYPE IT IN INSTEAD after 90 s (D-057).
+- [x] **P2.4 Review form.** Filled / "Not found, please type." / "Check this"; total `inputmode="decimal"`; date input with IST default; tap the photo to enlarge it beside the form; WHAT I READ (D-058).
+- [x] **P2.5 Flow.** Kind and Paid/Credit changeable on the form; saved entry + ANOTHER BILL; double submit blocked in the UI, the API and the DB.
+- AC: `e2e/scan.spec.ts` (14 tests: success, partial, fail, cancel, retake, dark/small, rotate, HEIC, PDF, drag-drop, kind change, 90 s type-it-in, double submit, phone camera) all pass; backend `test_receipts.py` +5 (PDF pages, stages, type-it-in with no late overwrite, kind change). Screenshots 390/1280: `artifacts/screens/P2-scan/`. **Live scan through the new UI** (local API + vite, live Sarvam, throwaway user, the synthetic phone-photo bill): read in 6.7 s, vendor/date/total all correct (₹2,464), saved; `artifacts/screens/P2-scan-live/`. No real paper bill exists (N-011).
 
 ---
 

@@ -1,5 +1,5 @@
 // Dev-only component gallery (/dev/ui). Loaded behind import.meta.env.DEV, so it is dropped
-// from production builds. Demo copy lives here, not in strings/en.ts, because users never see it.
+// from production builds. Specimen copy lives here, not in strings/en.ts, because users never see it.
 import { useState, type ReactNode } from 'react'
 import { Link } from 'react-router'
 import { Button, ButtonLink } from '../components/ui/Button'
@@ -59,7 +59,7 @@ function RowsInner({ run }: { run: number }) {
   )
 }
 
-function ToastDemo() {
+function ToastSpecimen() {
   const [state, setState] = useState<'saved' | 'undone'>('saved')
   const [run, setRun] = useState(0)
   return (
@@ -147,7 +147,7 @@ export default function DevUI() {
           <div className="flex max-w-md flex-col gap-4">
             <Button>Scan a bill</Button>
             <Button variant="outline">Edit</Button>
-            <ButtonLink to="/dev/ui/transition">Page transition demo</ButtonLink>
+            <ButtonLink to="/dev/ui/transition">Page transition specimen</ButtonLink>
             <Button disabled>Working…</Button>
             <Button variant="text" className="self-start">Void entry</Button>
           </div>
@@ -188,11 +188,11 @@ export default function DevUI() {
           </div>
         </Section>
 
-        <Section id="squares" title="PixelSquares · seeded (same seed → same pattern)">
+        <Section id="squares" title="PixelSquares · same pattern number → same pattern">
           <div className="grid gap-4 sm:grid-cols-3">
-            <div className="relative h-56 border border-ink"><PixelSquares seed={7} /></div>
-            <div className="relative h-56 border border-ink"><PixelSquares seed={7} /></div>
-            <div className="relative h-56 bg-ink"><PixelSquares seed={42} count={12} dark /></div>
+            <div className="relative h-56 border border-ink"><PixelSquares pattern={7} /></div>
+            <div className="relative h-56 border border-ink"><PixelSquares pattern={7} /></div>
+            <div className="relative h-56 bg-ink"><PixelSquares pattern={42} count={12} dark /></div>
           </div>
         </Section>
 
@@ -208,7 +208,7 @@ export default function DevUI() {
         </Section>
 
         <Section id="toast" title="Toast · §5, §6.5 (countdown hairline is linear, kept under reduced motion)">
-          <ToastDemo />
+          <ToastSpecimen />
         </Section>
       </div>
     </div>

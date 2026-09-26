@@ -20,6 +20,8 @@ type Party = { id: string; display_name: string; kind: Kind; needs_review: boole
 type Receipt = {
   receipt_id: string; status: string; kind: string; settled: boolean | null; vendor_name: string | null
   bill_date: string | null; total_paise: number | null; retried_in_english: boolean; error: string | null
+  ocr_text?: string | null; total_check?: 'ok' | 'check' | null
+  stage?: string | null; file_type?: string; created_at?: string
 }
 type History = { action: string; at: string; by: 'you' | 'another_member'; changes: { field: string; old: unknown; new: unknown }[] }
 
@@ -50,6 +52,8 @@ export class MockApi {
   delayMs: Record<string, number> = {}
   failNext: Record<string, { status: number; error: { code: string; message: string } }> = {}
   calls: { method: string; path: string; body: unknown }[] = []
+  /** Raw bytes of every uploaded audio/image part, in order (GOAL_2.0 P1.2a). */
+  uploads: { path: string; bytes: Buffer; mime: string }[] = []
   insights: unknown = null
   private seq = 0
 
@@ -167,6 +171,8 @@ export class MockApi {
       for (const m of raw.matchAll(/name="(\w+)"\r\n\r\n([^\r]*)\r\n/g)) body[m[1]] = m[2]
       const file = /name="(?:audio|image)"; filename="([^"]+)"\r\nContent-Type: ([^\r]+)/.exec(raw)
       if (file) body._file = `${file[1]} ${file[2]}`
+      const bytes = uploadedBytes(req.postDataBuffer(), ct)
+      if (bytes) this.uploads.push({ path, bytes, mime: file?.[2] ?? '' })
     }
     this.calls.push({ method, path: path + url.search, body })
     if (this.offline) return route.abort('internetdisconnected')
@@ -284,25 +290,31 @@ export class MockApi {
     // receipts
     if (path === '/receipts' && method === 'POST') {
       const id = this.id('r')
-      const nextReady = this.nextReceipt ?? { status: 'done', vendor_name: 'Shree Balaji Traders', bill_date: today(2), total_paise: 188000 }
+      const nextReady = this.nextReceipt ?? { status: 'done', vendor_name: 'Shree Balaji Traders', bill_date: today(2), total_paise: 188000,
+        ocr_text: 'SHREE BALAJI TRADERS\nNet amount 1,880.00', total_check: 'ok' }
       const form = req.postData() ?? ''
       const kind = /name="kind"\r\n\r\n(\w+)/.exec(form)?.[1] ?? 'supplier'
       const settledRaw = /name="settled"\r\n\r\n(\w+)/.exec(form)?.[1]
+      const fileType = /Content-Type: application\/pdf/.test(form) ? 'pdf' : 'image'
       this.receipts[id] = { receipt_id: id, status: 'queued', kind, settled: settledRaw === undefined ? null : settledRaw === 'true',
-        vendor_name: null, bill_date: null, total_paise: null, retried_in_english: false, error: null, reads: 0, ready: nextReady }
+        vendor_name: null, bill_date: null, total_paise: null, retried_in_english: false, error: null, reads: 0, ready: nextReady,
+        file_type: fileType, stage: 'uploaded', created_at: new Date().toISOString() }
       return ok({ receipt_id: id, status: 'queued' }, 201)
     }
     if (seg[0] === 'receipts' && seg.length >= 2) {
       const r = this.receipts[seg[1]]
       if (!r) return this.err(route, 404, 'not_found', 'That receipt does not exist.')
       if (seg.length === 2) {
+        // Truthful stages, as the API reports them: reading, then checking, then the result.
         r.reads += 1
-        if (r.reads >= 2 && (r.status === 'queued' || r.status === 'processing')) Object.assign(r, r.ready)
-        else if (r.status === 'queued') r.status = 'processing'
+        const busy = r.status === 'queued' || r.status === 'processing'
+        if (busy && !this.receiptStall && r.reads >= 3) Object.assign(r, { stage: null }, r.ready)
+        else if (busy) Object.assign(r, { status: 'processing', stage: r.reads >= 2 && !this.receiptStall ? 'checking' : 'reading' })
         const { reads: _reads, ready: _ready, ...pub } = r
         return ok(pub)
       }
       if (seg[2] === 'save') {
+        if (typeof body.kind === 'string') { r.kind = body.kind; r.settled = body.kind === 'expense' ? null : (body.settled as boolean) }
         const type = r.kind === 'supplier' ? (r.settled ? 'purchase_paid' : 'purchase_credit') : r.kind === 'customer' ? (r.settled ? 'cash_sale' : 'credit_given') : 'expense'
         const name = r.kind === 'supplier' ? String(body.vendor_name ?? '') : type === 'credit_given' ? String(body.customer_name ?? '') : ''
         if ((r.kind === 'supplier' || type === 'credit_given') && !name.trim()) return this.err(route, 422, 'party_required', type === 'credit_given' ? "Enter the customer's name." : "Enter the supplier's name.")
@@ -326,6 +338,8 @@ export class MockApi {
   }
 
   nextReceipt: Partial<Receipt> | null = null
+  /** Keep every bill 'reading' forever (cancel / 90 s timeout paths). */
+  receiptStall = false
 
   /** A plain default for GET /insights/weekly, computed from the mock's confirmed entries. */
   weekly() {
@@ -361,12 +375,23 @@ export const SILENT_MP3 = 'SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAA
 
 export function voiceResult(m: MockApi, opts: { decision: 'auto' | 'confirm' | 'clarify'; type?: string; rupees?: number; party?: string; suggestion?: string | null; speech: string; reason?: string | null; transcript?: string }) {
   if (opts.decision === 'clarify') {
-    return { decision: 'clarify', entry: null, suggestion: null, speech_text: opts.speech, audio_b64: SILENT_MP3, voice_note_id: m.id('vn'), transcript_en: opts.transcript ?? null }
+    return { decision: 'clarify', entry: null, suggestion: null, speech_text: opts.speech, audio_b64: SILENT_MP3, voice_note_id: m.id('vn'), transcript_en: opts.transcript ?? null, stt_raw: opts.transcript ?? null }
   }
   const kind: Kind = SUPPLIER.has(opts.type ?? '') ? 'supplier' : 'customer'
   const pid = opts.party ? m.party(opts.party, kind) : null
   const auto = opts.decision === 'auto'
   const e = m.entry({ type: opts.type ?? 'credit_given', amount_paise: Math.round((opts.rupees ?? 0) * 100), party_id: pid,
     status: auto ? 'confirmed' : 'pending', auto_saved: auto, source: 'voice', review_reason: opts.reason ?? null, voice_note_id: m.id('vn') })
-  return { decision: opts.decision, entry: m.out(e), suggestion: opts.suggestion ?? null, speech_text: opts.speech, audio_b64: SILENT_MP3, voice_note_id: e.voice_note_id, transcript_en: opts.transcript ?? null }
+  return { decision: opts.decision, entry: m.out(e), suggestion: opts.suggestion ?? null, speech_text: opts.speech, audio_b64: SILENT_MP3, voice_note_id: e.voice_note_id, transcript_en: opts.transcript ?? null, stt_raw: opts.transcript ?? null }
+}
+
+/** The file part of a multipart body, as raw bytes. */
+function uploadedBytes(buf: Buffer | null, contentType: string): Buffer | null {
+  const boundary = /boundary=([^;]+)/.exec(contentType)?.[1]
+  if (!buf || !boundary) return null
+  const head = buf.indexOf(Buffer.from('filename="'))
+  if (head < 0) return null
+  const start = buf.indexOf(Buffer.from('\r\n\r\n'), head) + 4
+  const end = buf.indexOf(Buffer.from(`\r\n--${boundary}`), start)
+  return end > start ? Buffer.from(buf.subarray(start, end)) : null
 }

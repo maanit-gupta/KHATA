@@ -19,6 +19,17 @@ AUDIO_TYPES = {"audio/webm": "webm", "audio/mp4": "mp4", "audio/x-m4a": "m4a", "
                "audio/aac": "aac", "audio/mpeg": "mp3", "audio/wav": "wav", "audio/x-wav": "wav",
                "audio/ogg": "ogg"}
 IMAGE_TYPES = {"image/jpeg": "jpg", "image/png": "png"}
+# Bills: photos, or a PDF (Document AI reads PDFs natively; GOAL_2.0 P2.1, D-056).
+BILL_TYPES = {**IMAGE_TYPES, "application/pdf": "pdf"}
+MAX_PDF_PAGES = 1
+
+
+def pdf_pages(data: bytes) -> int | None:
+    """Page count of a PDF from its page objects; None when they are hidden in compressed object
+    streams (then Document AI's own 10-page limit applies)."""
+    import re
+    n = len(re.findall(rb"/Type\s*/Page(?!s)", data))
+    return n or None
 
 
 def sniff(data: bytes) -> str | None:
@@ -38,19 +49,29 @@ def sniff(data: bytes) -> str | None:
         return "image/png"
     if data[:3] == b"\xff\xd8\xff":
         return "image/jpeg"
+    if data[:5] == b"%PDF-":
+        return "application/pdf"
     return None
 
 
 def read_upload(file: UploadFile, allowed: dict[str, str], wrong_type: AppError) -> tuple[bytes, str, str]:
     """Returns (bytes, mime, ext). Enforces the MIME allow-list and the 10 MB cap server-side.
-    A declared type outside the list is refused; a missing/generic one is sniffed from the bytes."""
+    A declared type outside the list is refused; a missing/generic one is sniffed from the bytes.
+    When the bytes clearly say otherwise (Safari can label an MP4 recording audio/webm), the
+    bytes win, so Sarvam is always told the real container (GOAL_2.0 P1.2f). Bytes are never
+    converted or re-encoded."""
     declared = (file.content_type or "").split(";")[0].strip().lower()
     data = file.file.read(MAX_UPLOAD_BYTES + 1)
     if len(data) > MAX_UPLOAD_BYTES:
         raise AppError(413, "too_large", "That file is over 10 MB. Use a smaller photo or a shorter recording.")
+    sniffed = sniff(data)
     mime = declared if declared in allowed else None
     if mime is None and declared in ("", "application/octet-stream"):
-        mime = sniff(data)
+        mime = sniffed
+    if mime is None:
+        raise wrong_type
+    if sniffed in allowed and allowed[sniffed] != allowed[mime]:
+        mime = sniffed
     if mime not in allowed:
         raise wrong_type
     return data, mime, allowed[mime]

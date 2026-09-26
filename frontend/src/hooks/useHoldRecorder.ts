@@ -46,7 +46,9 @@ export function useHoldRecorder({ onAudio, onTooShort, onDenied }:
       setPhase('idle')
       window.clearTimeout(timer.current)
       if (Date.now() - started.current < MIN_MS) return handlers.current.onTooShort()
-      handlers.current.onAudio(new Blob(chunks, { type: r.mimeType || 'audio/webm' }))
+      // A new Blob from this recording's own chunks only (the array is created per recording).
+      // Safari can report an empty mimeType; the chunks still carry the real container type.
+      handlers.current.onAudio(new Blob(chunks, { type: r.mimeType || chunks[0]?.type || 'audio/webm' }))
     }
     rec.current = r
     started.current = Date.now()

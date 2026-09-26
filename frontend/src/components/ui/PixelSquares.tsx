@@ -1,14 +1,14 @@
 import { useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { mulberry32 } from '../../lib/seeded'
+import { mulberry32 } from '../../lib/prng'
 
 const SIZE = 40
 
-type Point = { x: number; y: number } // seeded {x%, y%}, 0–1
+type Point = { x: number; y: number } // pattern {x%, y%}, 0–1
 type Cell = { c: number; r: number }
 
-/** Seeded {x%, y%} anchors, plus which anchors get a diagonal partner. Stable per seed. */
-function seededPoints(seed: number, count: number): { points: Point[]; paired: boolean[]; dir: number[] } {
-  const rand = mulberry32(seed)
+/** Pseudo-random {x%, y%} anchors, plus which anchors get a diagonal partner. Stable per pattern number. */
+function patternPoints(pattern: number, count: number): { points: Point[]; paired: boolean[]; dir: number[] } {
+  const rand = mulberry32(pattern)
   const points: Point[] = []
   const paired: boolean[] = []
   const dir: number[] = []
@@ -21,12 +21,12 @@ function seededPoints(seed: number, count: number): { points: Point[]; paired: b
 }
 
 /**
- * Snap the seeded points onto the 40px cell grid of the container. Squares never touch side by
+ * Snap the pattern points onto the 40px cell grid of the container. Squares never touch side by
  * side or overlap; the only contact is a deliberate diagonal pair meeting corner-to-corner.
  */
-function layoutCells(seed: number, count: number, cols: number, rows: number): Cell[] {
+function layoutCells(pattern: number, count: number, cols: number, rows: number): Cell[] {
   if (cols < 2 || rows < 2) return []
-  const { points, paired, dir } = seededPoints(seed, count)
+  const { points, paired, dir } = patternPoints(pattern, count)
   const taken = new Set<string>()
   const key = (c: number, r: number) => `${c},${r}`
   const sideBlocked = (c: number, r: number, ignore?: Cell) =>
@@ -54,11 +54,11 @@ function layoutCells(seed: number, count: number, cols: number, rows: number): C
 }
 
 /**
- * 40×40 solid squares in a seeded, asymmetric constellation (DESIGN.md §5). Ink on light,
- * --ink-soft on dark. Same seed + same size → same pattern. Decorative: aria-hidden.
+ * 40×40 solid squares in a pseudo-random, asymmetric constellation (DESIGN.md §5). Ink on light,
+ * --ink-soft on dark. Same pattern + same size → same pattern. Decorative: aria-hidden.
  */
-export function PixelSquares({ seed, count = 9, dark = false, className = '' }:
-  { seed: number; count?: number; dark?: boolean; className?: string }) {
+export function PixelSquares({ pattern, count = 9, dark = false, className = '' }:
+  { pattern: number; count?: number; dark?: boolean; className?: string }) {
   const ref = useRef<HTMLDivElement>(null)
   const [grid, setGrid] = useState({ cols: 0, rows: 0 })
 
@@ -76,7 +76,7 @@ export function PixelSquares({ seed, count = 9, dark = false, className = '' }:
     return () => ro.disconnect()
   }, [])
 
-  const cells = useMemo(() => layoutCells(seed, count, grid.cols, grid.rows), [seed, count, grid.cols, grid.rows])
+  const cells = useMemo(() => layoutCells(pattern, count, grid.cols, grid.rows), [pattern, count, grid.cols, grid.rows])
   return (
     <div ref={ref} aria-hidden className={`pointer-events-none absolute inset-0 overflow-hidden ${className}`}>
       {cells.map((cell, i) => (

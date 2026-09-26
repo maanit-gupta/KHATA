@@ -13,7 +13,7 @@ export function AboutScreen() {
   return (
     <div className="min-h-dvh bg-paper">
       <Header>
-        <NavChip to="/demo">{a.navDemo}</NavChip>
+        <NavChip to="/signup">{a.navSignup}</NavChip>
         <NavChip to="/login">{a.navLogin}</NavChip>
       </Header>
 
@@ -93,8 +93,7 @@ export function AboutScreen() {
         <H2 lines={a.ctaTitle} />
         <div className="flex flex-col gap-4 app:col-span-2">
           <p className="t-body-lg">{a.ctaBody}</p>
-          <ButtonLink to="/demo">{a.ctaDemo}</ButtonLink>
-          <ButtonLink to="/signup" variant="outline">{a.ctaSignup}</ButtonLink>
+          <ButtonLink to="/signup">{a.ctaSignup}</ButtonLink>
           <a href={a.repoUrl} className="inline-flex min-h-12 items-center self-start t-label underline decoration-1 underline-offset-4">
             {a.repo}
           </a>

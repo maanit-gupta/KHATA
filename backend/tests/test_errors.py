@@ -60,7 +60,8 @@ def test_sarvam_retries_then_succeeds(fake_ai, status):
         if len(calls) < 3:
             raise ApiError(status_code=status, body={"error": {"message": "busy"}})
         return SimpleNamespace(transcript=" hello ")
-    assert _sarvam_with(transcribe).transcribe_to_english(b"x", "hi-IN") == "hello"
+    heard = _sarvam_with(transcribe).transcribe_to_english(b"x", "hi-IN")
+    assert heard.raw == " hello " and heard.text == "hello"     # raw kept for stt_raw (GOAL_2.0 P1.3)
     assert len(calls) == 3 and fake_ai.sleeps == [1.0, 2.0]
     assert calls[0]["request_options"] == {"max_retries": 0}  # the SDK's own retries are off
 

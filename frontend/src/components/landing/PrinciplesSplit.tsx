@@ -14,7 +14,7 @@ export function PrinciplesSplit() {
     <section ref={ref} aria-labelledby="trust-title" data-dark className="grid overflow-hidden app:grid-cols-3">
       <div className="on-dark relative min-h-[260px] bg-ink gutter-x py-20 text-paper app:py-32">
         <RevealHeading id="trust-title" lines={L.trustTitle} revealed={revealed} dark />
-        <PixelSquares seed={907} count={4} dark className="top-1/2" />
+        <PixelSquares pattern={907} count={4} dark className="top-1/2" />
       </div>
       <div className={`motion-ui bg-cyan gutter-x py-20 transition-transform duration-700 ease-brand app:col-span-2 app:py-32 ${revealed ? 'translate-x-0' : 'translate-x-full'}`}>
         <div key={String(revealed)} className={`border-b border-ink ${revealed ? '' : 'invisible'}`}>

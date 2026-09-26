@@ -1,4 +1,5 @@
 import { api } from './api'
+import { playUrl } from './player'
 
 /** GET /media/{voice|receipts}/{id}: a signed URL that lives 10 minutes (CLAUDE.md §9). */
 export function mediaUrl(bucket: 'voice' | 'receipts', id: string) {
@@ -7,7 +8,7 @@ export function mediaUrl(bucket: 'voice' | 'receipts', id: string) {
 
 export async function playRecording(voiceNoteId: string) {
   const url = await mediaUrl('voice', voiceNoteId)
-  await new Audio(url).play()
+  await playUrl(url)
 }
 
 /** Opens the bill photo in a new tab. The tab is opened synchronously (inside the tap) so pop-up

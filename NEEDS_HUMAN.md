@@ -33,6 +33,14 @@ are listed at the end with their evidence.
   Include a thermal till slip, a handwritten kachcha bill and a faded one. Each voice file costs
   about 3 Sarvam + 1 Groq calls; each bill 2–11 Sarvam calls. *Why not Claude:* only the owner has
   real shop recordings and real paper bills.
+- **N-009 Pick how Hindi and Tamil read-backs are translated.** `artifacts/tts-compare/` has 6
+  MP3s: the same three read-backs in Hindi and Tamil, translated three ways (Mayura colloquial,
+  which the app uses now; Mayura formal; sarvam-translate). `report.md` there shows every text and
+  a machine check (all amounts are pronounced correctly; formal Tamil dropped a digit group once,
+  which the number guard catches). **Do:** have a native Hindi and a native Tamil speaker listen and
+  pick one per language, then set it in `backend/app/constants.py` → `TRANSLATE`. *Why not
+  Claude:* whether a sentence sounds natural, and whether "எடுத்துக்கிட்டாரு" or "கடன்" reads as
+  the right direction of udhaar, needs a native ear.
 - **N-007 Review and merge the branches.** Neither run merges or deploys. Review
   `goal/khata-2` (built on `goal/complete-khata`), merge to `main`, apply the migrations listed
   in DEPLOY.md, then deploy.

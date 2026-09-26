@@ -12,17 +12,18 @@ from datetime import datetime
 from typing import Literal
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, UploadFile
+from postgrest.exceptions import APIError
 from pydantic import BaseModel, ConfigDict
 
 from ..auth import CurrentUser, current_user
-from ..db import user_client
+from ..db import PG_UNIQUE_VIOLATION, user_client
 from ..errors import AppError
 from ..ratelimit import rate_limit
 from ..ledger import (check_uuid, now_ist, now_iso, parse_iso_date, require_membership, rupees_to_paise,
                       today_ist)
 from ..services import llm_router, receipt_ocr
 from ..services.sarvam import client as sarvam
-from ..storage import IMAGE_TYPES, read_upload, upload
+from ..storage import BILL_TYPES, MAX_PDF_PAGES, pdf_pages, read_upload, upload
 from .entries import fetch_entry
 
 log = logging.getLogger("khata")
@@ -31,6 +32,10 @@ router = APIRouter()
 # Extract + English retry + fallback can take 3 × 90 s. A job still "running" after this was lost
 # (e.g. the free Render instance restarted), so it is reported as failed and can be typed in.
 STALE_AFTER_S = 300
+# After 90 s of reading the scan screen offers "Type it in instead" (GOAL_2.0 P2.3): from then on
+# the bill may be saved by hand even while the job still runs; the job's late result is then not
+# written over what the user saved.
+TYPE_IT_IN_AFTER_S = 90
 
 
 def _entry_type(kind: str, settled: bool | None) -> str:
@@ -49,35 +54,56 @@ def _receipt(db, receipt_id: str) -> dict:
     return rows[0]
 
 
+def _stage(r: dict) -> str | None:
+    """uploaded → reading → checking while the job runs; None once it has finished."""
+    if r["status"] == "queued":
+        return "uploaded"
+    if r["status"] == "processing":
+        return (r.get("raw_extract") or {}).get("stage") or "reading"
+    return None
+
+
 def _out(r: dict) -> dict:
-    return {"receipt_id": r["id"], "status": r["status"], "kind": r["kind"], "settled": r["settled"],
+    return {"receipt_id": r["id"], "status": r["status"], "stage": _stage(r), "kind": r["kind"], "settled": r["settled"],
+            "created_at": r["created_at"], "file_type": "pdf" if str(r["image_path"]).endswith(".pdf") else "image",
             "vendor_name": r["vendor_name"], "bill_date": r["bill_date"], "total_paise": r["total_paise"],
-            "retried_in_english": r["retried_in_english"], "error": r["error"]}
+            "retried_in_english": r["retried_in_english"], "error": r["error"],
+            # GOAL_2.0 P1.3 / P2.4: what the bill says (Digitise text), and whether the total shown
+            # is printed on it ("ok") or needs a look ("check").
+            "ocr_text": r.get("ocr_text"), "total_check": (r.get("raw_extract") or {}).get("total_check")}
+
+
+def _age_s(r: dict) -> float:
+    created = datetime.fromisoformat(str(r["created_at"]).replace("Z", "+00:00"))
+    return (now_ist() - created).total_seconds()
 
 
 def _is_stale(r: dict) -> bool:
-    if r["status"] not in ("queued", "processing"):
-        return False
-    created = datetime.fromisoformat(str(r["created_at"]).replace("Z", "+00:00"))
-    return (now_ist() - created).total_seconds() > STALE_AFTER_S
+    return r["status"] in ("queued", "processing") and _age_s(r) > STALE_AFTER_S
 
 
 def process_receipt(receipt_id: str, token: str, image: bytes, filename: str, mime: str, lang: str) -> None:
     """BackgroundTask. Runs as the uploading user (RLS applies)."""
     db = user_client(token)
+
+    def stage(name: str) -> None:   # progress marker; replaced by the real output at the end
+        db.table("receipts").update({"raw_extract": {"stage": name}}).eq("id", receipt_id).eq("status", "processing").execute()
+
     try:
-        db.table("receipts").update({"status": "processing"}).eq("id", receipt_id).execute()
+        db.table("receipts").update({"status": "processing", "raw_extract": {"stage": "reading"}}
+                                    ).eq("id", receipt_id).eq("status", "queued").execute()
         o = receipt_ocr.read_receipt(sarvam(), image, filename, mime, lang,
-                                     fields_from_text=llm_router.receipt_fields)
+                                     fields_from_text=llm_router.receipt_fields, on_stage=stage)
         upd = {"status": o.status, "vendor_name": o.vendor_name, "bill_date": o.bill_date,
                "total_paise": o.total_paise, "retried_in_english": o.retried_in_english,
                "sarvam_job_id": o.job_ids[-1] if o.job_ids else None, "raw_extract": o.raw,
-               "error": o.error}
+               "ocr_text": o.ocr_text, "error": o.error}
     except Exception:
         log.exception("receipt OCR crashed")
         upd = {"status": "failed", "error": "Couldn't read that bill. Type the values below."}
     try:
-        db.table("receipts").update(upd).eq("id", receipt_id).execute()
+        # Only while still reading: if the user already typed it in and saved, their values stand.
+        db.table("receipts").update(upd).eq("id", receipt_id).in_("status", ["queued", "processing"]).execute()
     except Exception:
         log.exception("could not store OCR result")
 
@@ -91,7 +117,11 @@ def create_receipt(background: BackgroundTasks, image: UploadFile = File(...),
     if kind != "expense" and settled is None:
         raise AppError(422, "settled_required",
                        "Choose Paid or Credit first." if kind == "supplier" else "Choose Cash or Udhaar first.")
-    data, mime, ext = read_upload(image, IMAGE_TYPES, AppError(422, "bad_image", "Use a JPG or PNG photo of the bill."))
+    data, mime, ext = read_upload(image, BILL_TYPES, AppError(
+        422, "bad_image", "Use a JPG or PNG photo, or a PDF, of the bill."))
+    if mime == "application/pdf" and (pdf_pages(data) or 1) > MAX_PDF_PAGES:
+        raise AppError(422, "pdf_pages", f"This PDF has {pdf_pages(data)} pages. Upload just the bill: a photo "
+                                         "or a one-page PDF.")
     path = upload("receipts", shop_id, data, mime, ext)
     rec = user_client(user.token).table("receipts").insert({
         "shop_id": shop_id, "image_path": path, "kind": kind,
@@ -118,6 +148,9 @@ class SaveReceipt(BaseModel):
     bill_date: str | None = None
     total_rupees: float
     customer_name: str | None = None
+    # The bill kind and Paid/Credit can still be changed on the review form (GOAL_2.0 P2.5).
+    kind: Literal["supplier", "customer", "expense"] | None = None
+    settled: bool | None = None
 
 
 def _bill_date(raw: str | None) -> str | None:
@@ -138,8 +171,14 @@ def save_receipt(receipt_id: str, body: SaveReceipt, user: CurrentUser = Depends
     shop_id = m["shop_id"]
     db = user_client(user.token)
     rec = _receipt(db, receipt_id)
-    if rec["status"] in ("queued", "processing") and not _is_stale(rec):
+    if rec["status"] in ("queued", "processing") and _age_s(rec) < TYPE_IT_IN_AFTER_S:
         raise AppError(409, "still_reading", "Still reading this bill. Wait a moment, then save.")
+    if body.kind is not None:
+        settled = None if body.kind == "expense" else body.settled
+        if body.kind != "expense" and settled is None:
+            raise AppError(422, "settled_required",
+                           "Choose Paid or Credit first." if body.kind == "supplier" else "Choose Cash or Udhaar first.")
+        rec = {**rec, "kind": body.kind, "settled": settled}
     live = (db.table("entries").select("id").eq("receipt_id", receipt_id).neq("status", "voided")
             .limit(1).execute().data)
     if live:
@@ -185,8 +224,15 @@ def save_receipt(receipt_id: str, body: SaveReceipt, user: CurrentUser = Depends
            "review_reason": d.reason, "receipt_id": receipt_id, "created_by": user.id}
     if auto:
         row.update(confirmed_by=user.id, confirmed_at=now_iso())
-    entry = fetch_entry(db, db.table("entries").insert(row).execute().data[0]["id"])
+    try:
+        inserted = db.table("entries").insert(row).execute().data[0]
+    except APIError as e:
+        if e.code == PG_UNIQUE_VIOLATION:   # two taps at once: migration 002's index refused the second
+            raise AppError(409, "already_saved", "This bill is already saved. Open it from the ledger to change it.") from e
+        raise
+    entry = fetch_entry(db, inserted["id"])
     # The typed values are what the bill says now; `done` takes a failed bill out of the review queue.
     db.table("receipts").update({"vendor_name": vendor, "bill_date": bill_date, "total_paise": amount_paise,
-                                 "status": "done"}).eq("id", receipt_id).execute()
+                                 "kind": rec["kind"], "settled": rec["settled"], "status": "done"}
+                                ).eq("id", receipt_id).execute()
     return {"decision": d.action, "entry": entry, "suggestion": d.suggestion}

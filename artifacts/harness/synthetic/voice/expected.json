@@ -1,0 +1,62 @@
+[
+  {
+    "file": "clip1_hi-IN.mp3",
+    "path": "/Users/maanitgupta/KHATA/artifacts/harness/synthetic/voice/clip1_hi-IN.mp3",
+    "lang": "hi-IN",
+    "what_was_said": "गुरदीप को 2600 रुपये उधार दिए",
+    "expected_type": "credit_given",
+    "expected_party": "Gurdeep",
+    "expected_amount": "2600",
+    "tts_voice": "shubh"
+  },
+  {
+    "file": "clip2_hi-IN.mp3",
+    "path": "/Users/maanitgupta/KHATA/artifacts/harness/synthetic/voice/clip2_hi-IN.mp3",
+    "lang": "hi-IN",
+    "what_was_said": "कुसुम ने 1745 रुपये वापस दिए",
+    "expected_type": "payment_received",
+    "expected_party": "Kusum",
+    "expected_amount": "1745",
+    "tts_voice": "shubh"
+  },
+  {
+    "file": "clip3_ta-IN.mp3",
+    "path": "/Users/maanitgupta/KHATA/artifacts/harness/synthetic/voice/clip3_ta-IN.mp3",
+    "lang": "ta-IN",
+    "what_was_said": "பல்லவி அவர்களுக்கு 1275 ரூபாய் கடன் கொடுத்தேன்",
+    "expected_type": "credit_given",
+    "expected_party": "Pallavi",
+    "expected_amount": "1275",
+    "tts_voice": "ratan"
+  },
+  {
+    "file": "clip4_ta-IN.mp3",
+    "path": "/Users/maanitgupta/KHATA/artifacts/harness/synthetic/voice/clip4_ta-IN.mp3",
+    "lang": "ta-IN",
+    "what_was_said": "இன்று 2840 ரூபாய் ரொக்க விற்பனை",
+    "expected_type": "cash_sale",
+    "expected_party": "",
+    "expected_amount": "2840",
+    "tts_voice": "ratan"
+  },
+  {
+    "file": "clip5_en-IN.mp3",
+    "path": "/Users/maanitgupta/KHATA/artifacts/harness/synthetic/voice/clip5_en-IN.mp3",
+    "lang": "en-IN",
+    "what_was_said": "Bought stock from Selvi for 365 rupees on credit",
+    "expected_type": "purchase_credit",
+    "expected_party": "Selvi",
+    "expected_amount": "365",
+    "tts_voice": "ishita"
+  },
+  {
+    "file": "clip6_en-IN.mp3",
+    "path": "/Users/maanitgupta/KHATA/artifacts/harness/synthetic/voice/clip6_en-IN.mp3",
+    "lang": "en-IN",
+    "what_was_said": "Paid 2470 rupees for the electricity bill",
+    "expected_type": "expense",
+    "expected_party": "",
+    "expected_amount": "2470",
+    "tts_voice": "ishita"
+  }
+]

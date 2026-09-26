@@ -184,7 +184,7 @@ def test_silence_is_a_clarify_without_calling_groq(client, users, fake_sarvam, f
     u = users.with_shop()
     fake_sarvam.transcripts.append("")
     r = post_audio(client, "/voice/entry", u["headers"]).json()
-    assert r["decision"] == "clarify" and r["speech_text"] == "I did not hear anything. Please say it again."
+    assert r["decision"] == "clarify" and r["speech_text"] == "I didn't catch that. Hold the button and say it again."
     assert fake_groq.calls == []
 
 

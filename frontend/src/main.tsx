@@ -4,11 +4,7 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router'
 import { App } from './App'
 import { SessionProvider } from './auth/session'
-import { enterDemo } from './lib/demo'
 import './index.css'
-
-// /demo is a shareable one-click link into demo mode (see lib/demo.ts).
-if (window.location.pathname === '/demo') enterDemo('/app')
 
 // Data stays fresh for 30 s, so going back to the Ledger (or any screen) shows the cached lists at
 // once instead of refetching everything. Every write invalidates what it touches
