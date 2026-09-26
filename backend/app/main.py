@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .config import get_settings
 from .errors import install_error_handlers
-from .routers import me, shops
+from .routers import entries, me, parties, shops, voice
 
 logging.basicConfig(level=logging.INFO)
 
@@ -28,3 +28,6 @@ def health():
 
 app.include_router(me.router)
 app.include_router(shops.router)
+app.include_router(entries.router)
+app.include_router(parties.router)
+app.include_router(voice.router)

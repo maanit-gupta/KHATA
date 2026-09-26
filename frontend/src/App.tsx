@@ -4,6 +4,8 @@ import { PublicOnly, RequireSessionWithoutShop, RequireShop } from './auth/guard
 import { TransitionRoutes } from './components/ui/PageTransition'
 import { AppShell, Placeholder, SettingsPlaceholder } from './screens/AppShell'
 import { AuthScreen } from './screens/AuthScreen'
+import { LedgerScreen } from './screens/LedgerScreen'
+import { PartiesScreen, PartyDetailScreen } from './screens/PartiesScreen'
 import { OnboardingScreen } from './screens/OnboardingScreen'
 import { t } from './strings/en'
 
@@ -37,9 +39,9 @@ export function App() {
         </Route>
         <Route element={<RequireShop />}>
           <Route path="/app" element={<AppShell />}>
-            <Route index element={<Placeholder title={t.screens.ledger} />} />
-            <Route path="parties" element={<Placeholder title={t.screens.parties} />} />
-            <Route path="parties/:id" element={<Placeholder title={t.screens.partyDetail} />} />
+            <Route index element={<LedgerScreen />} />
+            <Route path="parties" element={<PartiesScreen />} />
+            <Route path="parties/:id" element={<PartyDetailScreen />} />
             <Route path="review" element={<Placeholder title={t.screens.review} />} />
             <Route path="entries/:id" element={<Placeholder title={t.screens.entry} />} />
             <Route path="scan" element={<Placeholder title={t.screens.scan} />} />

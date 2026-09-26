@@ -88,6 +88,47 @@ export const en = {
     new: 'New',
   },
 
+  ledger: {
+    holdToAdd: 'Hold to add',
+    listening: 'Listening… release to send',
+    working: 'Working…',
+    tooShort: 'Hold the button while speaking.',
+    micDenied: 'Microphone access is blocked. Allow the microphone for this site in your browser settings, then try again.',
+    recent: ['Recent', 'entries.'],
+    empty: 'No entries yet. Hold the button and say one.',
+    confirm: 'Confirm',
+    voidIt: 'Void',
+    addByHand: 'Add by hand',
+    closeForm: 'Close form',
+    type: 'Type',
+    amount: 'Amount (₹)',
+    partyName: 'Customer or supplier name',
+    note: 'Note',
+    save: 'Save entry',
+    saved: (who: string, amount: string) => `Saved · ${who} · ${amount}`,
+    heard: (text: string) => `Heard: “${text}”`,
+    play: '▶ Play',
+    noParty: '—',
+  },
+
+  entryTypes: {
+    credit_given: 'Credit given',
+    payment_received: 'Payment received',
+    cash_sale: 'Cash sale',
+    purchase_credit: 'Purchase on credit',
+    purchase_paid: 'Purchase paid',
+    payment_made: 'Payment made',
+    expense: 'Expense',
+  },
+
+  parties: {
+    owesYou: (amount: string) => `Owes you ${amount}`,
+    youOwe: (amount: string) => `You owe ${amount}`,
+    settled: 'Settled',
+    empty: 'No parties yet.',
+    back: 'All parties',
+  },
+
   toast: {
     undo: 'Undo',
     undone: 'Undone.',
