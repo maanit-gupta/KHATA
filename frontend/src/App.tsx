@@ -1,5 +1,5 @@
-import { lazy, Suspense } from 'react'
-import { Navigate, Route } from 'react-router'
+import { lazy, Suspense, useEffect } from 'react'
+import { Route } from 'react-router'
 import { PublicOnly, RequireSessionWithoutShop, RequireShop } from './auth/guards'
 import { TransitionRoutes } from './components/ui/PageTransition'
 import { AppShell } from './screens/AppShell'
@@ -12,14 +12,23 @@ import { LedgerScreen } from './screens/LedgerScreen'
 import { PartiesScreen, PartyDetailScreen } from './screens/PartiesScreen'
 import { ScanScreen } from './screens/ScanScreen'
 import { OnboardingScreen } from './screens/OnboardingScreen'
+import { enterDemo } from './lib/demo'
 import { t } from './strings/en'
 
 // /dev/ui exists only in dev: Vite replaces import.meta.env.DEV with false in production builds,
 // so these imports are dead code and the gallery is not bundled.
+const LandingScreen = lazy(() => import('./screens/LandingScreen'))
+
 const DevUI = import.meta.env.DEV ? lazy(() => import('./dev/DevUI')) : null
 const DevTransition = import.meta.env.DEV
   ? lazy(() => import('./dev/DevUI').then((m) => ({ default: m.DevTransitionTarget })))
   : null
+
+/** /demo reached by an in-app link (a full page load is handled in main.tsx before React). */
+function DemoEntry() {
+  useEffect(() => { enterDemo('/app') }, [])
+  return null
+}
 
 function NotFound() {
   return (
@@ -33,9 +42,9 @@ export function App() {
   return (
     <Suspense fallback={null}>
       <TransitionRoutes>
-        {/* The public landing page (DESIGN.md §7) is a later step; until then / goes to log in. */}
-        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="/" element={<LandingScreen />} />
         <Route path="/about" element={<AboutScreen />} />
+        <Route path="/demo" element={<DemoEntry />} />
         <Route element={<PublicOnly />}>
           <Route path="/login" element={<AuthScreen mode="login" />} />
           <Route path="/signup" element={<AuthScreen mode="signup" />} />

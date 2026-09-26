@@ -130,6 +130,45 @@ export const en = {
     close: 'Close',
   },
 
+  landing: {
+    nav: { home: 'Home', how: 'How it works', login: 'Log in', start: 'Get started' },
+    hero: ['Your khata,', 'by voice.'],
+    blurb: ["Speak an entry, scan a bill, ask what's owed.", 'Six Indian languages.'],
+    start: 'Get started',
+    howTitle: ['Three ways', 'to keep the book.'],
+    ways: [
+      { title: 'Speak it', body: ['Hold, say who took what.', "It's written down."] },
+      { title: 'Scan it', body: ['Photograph any bill,', 'printed or handwritten.'] },
+      { title: 'Ask it', body: ['‘How much does Ramesh owe?’', 'Answered aloud.'] },
+    ],
+    trustTitle: ['Built to', 'be trusted.'],
+    principles: ['Every entry keeps its recording.', 'Big amounts always wait for your tap.', 'Six languages, one ledger.'],
+    sayTitle: ['Say it', 'your way.'],
+    // TODO: native-speaker check. Each line should be how a shopkeeper would actually say
+    // "I gave Ramesh 250 on credit" in that language, in its own script.
+    sayLines: [
+      { said: 'ரமேஷுக்கு 250 ரூபாய் கடன் கொடுத்தேன்', lang: 'Tamil', code: 'ta' },
+      { said: 'रमेश को 250 उधार दिया', lang: 'Hindi', code: 'hi' },
+      { said: 'Gave Ramesh 250 on credit', lang: 'English', code: 'en' },
+      { said: 'రమేష్‌కి 250 రూపాయలు అప్పు ఇచ్చాను', lang: 'Telugu', code: 'te' },
+      { said: 'ರಮೇಶ್‌ಗೆ 250 ರೂಪಾಯಿ ಸಾಲ ಕೊಟ್ಟೆ', lang: 'Kannada', code: 'kn' },
+      { said: 'രമേശിന് 250 രൂപ കടം കൊടുത്തു', lang: 'Malayalam', code: 'ml' },
+    ],
+    builtByTitle: ['Built', 'by.'],
+    // TODO: the maker's 4-line bio. BuiltBy renders only when public/founder.jpg exists.
+    builtByBio: [] as string[],
+    footerLinks: [
+      { label: 'Log in', to: '/login' },
+      { label: 'Create an account', to: '/signup' },
+      { label: 'Try the demo', to: '/demo' },
+      { label: 'How it works in detail', to: '/about' },
+    ],
+    builtFor: 'Built for a hackathon, September 2026.',
+    repoLabel: 'github.com/maanit-gupta/KHATA',
+    repoUrl: 'https://github.com/maanit-gupta/KHATA',
+    founderAlt: 'The maker of Khata',
+  },
+
   about: {
     navDemo: 'Try demo',
     navLogin: 'Log in',
