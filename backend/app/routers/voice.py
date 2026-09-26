@@ -18,6 +18,7 @@ from fastapi import APIRouter, Depends, File, Form, UploadFile
 from pydantic import BaseModel, ConfigDict
 
 from ..auth import CurrentUser, current_user
+from ..config import stt_prime_party_names
 from ..qa_tools import make_tools
 from ..ratelimit import rate_limit
 from ..db import user_client
@@ -115,6 +116,18 @@ def _save(db, m: dict, user: CurrentUser, parsed: llm_router.ParsedEntry, matche
     return d, entry, suggested_id
 
 
+def _party_keyterms(db, shop_id: str) -> list[str]:
+    """Up to 50 party names (Sarvam's keyterm limit, 64 chars each), most recently added first."""
+    rows = (db.table("parties").select("display_name").eq("shop_id", shop_id)
+            .order("created_at", desc=True).limit(50).execute().data)
+    return [r["display_name"][:64] for r in rows if r["display_name"].strip()]
+
+
+def _same_text(a: str, b: str | None) -> bool:
+    norm = lambda x: " ".join((x or "").lower().replace("₹", "").split()).strip(" .")  # noqa: E731
+    return bool(b) and norm(a) == norm(b)
+
+
 def _valid_date(iso: str | None) -> str | None:
     """The model's occurred_on is a hint; drop anything that isn't a real ISO date."""
     try:
@@ -138,7 +151,8 @@ def voice_entry(audio: UploadFile = File(...), answer_to: str | None = Form(None
     note = db.table("voice_notes").insert({"shop_id": shop_id, "audio_path": path, "spoken_lang": lang,
                                            "purpose": "entry", "created_by": user.id}).execute().data[0]
 
-    transcript = sarvam().transcribe_to_english(data, lang, mime, f"note.{ext}")
+    keyterms = _party_keyterms(db, shop_id) if stt_prime_party_names() else None
+    transcript = sarvam().transcribe_to_english(data, lang, mime, f"note.{ext}", keyterms=keyterms)
     text = transcript
     if first:  # §9b: join the question's transcript with the answer and parse them together
         first_text = (first.get("parsed") or {}).get("input_text") or first.get("transcript_en") or ""
@@ -148,6 +162,8 @@ def voice_entry(audio: UploadFile = File(...), answer_to: str | None = Form(None
         parsed.occurred_on = _valid_date(parsed.occurred_on)
         if parsed.party_name:
             parsed.party_name = parsed.party_name.strip()
+        if parsed.note and _same_text(parsed.note, transcript):
+            parsed.note = None   # live check: the parser echoed the whole sentence as the note
 
     kind = party_kind_for(parsed.type) if parsed else None
     matches: list[dict] = []

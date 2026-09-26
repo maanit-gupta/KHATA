@@ -237,3 +237,47 @@ def test_tts_failure_never_undoes_a_save(client, users, fake_sarvam, fake_groq):
                                          (25050, "250.50"), (100, "1"), (10000000, "1,00,000")])
 def test_spoken_rupees(paise, text):
     assert spoken_rupees(paise) == text
+
+
+def test_a_note_that_just_repeats_the_transcript_is_dropped(client, users, fake_sarvam, fake_groq):
+    """Seen live (tests/fixtures/live/voice_*.json): the parser put the whole sentence in `note`."""
+    u = users.with_shop()
+    _say(fake_sarvam, fake_groq, "Ramesh was given ₹250 as a loan.", type="credit_given", party_name="Ramesh",
+         amount_rupees=250, note="Ramesh was given ₹250 as a loan.")
+    assert post_audio(client, "/voice/entry", u["headers"]).json()["entry"]["note"] is None
+    _say(fake_sarvam, fake_groq, "Ramesh 250 udhaar for rice", type="credit_given", party_name="Ramesh",
+         amount_rupees=250, note="for rice")
+    assert post_audio(client, "/voice/entry", u["headers"]).json()["entry"]["note"] == "for rice"
+
+
+# --- stretch: STT priming with party names (flag off by default, D-045) ------------------------
+def test_stt_priming_is_off_by_default(client, users, fake_sarvam, fake_groq, monkeypatch):
+    monkeypatch.delenv("STT_PRIME_PARTY_NAMES", raising=False)
+    u = users.with_shop()
+    _party(client, u, "Ramesh")
+    _say(fake_sarvam, fake_groq, "cash sale 5", type="cash_sale", amount_rupees=5)
+    post_audio(client, "/voice/entry", u["headers"])
+    assert fake_sarvam.keyterms == [None]
+
+
+def test_stt_priming_sends_party_names_when_on(client, users, fake_sarvam, fake_groq, monkeypatch):
+    monkeypatch.setenv("STT_PRIME_PARTY_NAMES", "1")
+    u = users.with_shop()
+    _party(client, u, "Ramesh")
+    _party(client, u, "Gupta Traders", kind="supplier")
+    _say(fake_sarvam, fake_groq, "cash sale 5", type="cash_sale", amount_rupees=5)
+    post_audio(client, "/voice/entry", u["headers"])
+    assert sorted(fake_sarvam.keyterms[0]) == ["Gupta Traders", "Ramesh"]
+
+
+def test_sarvam_adapter_uses_v4_only_with_keyterms():
+    from types import SimpleNamespace
+    from app.services.sarvam import Sarvam
+    seen = []
+    s = Sarvam.__new__(Sarvam)
+    s.client = SimpleNamespace(speech_to_text=SimpleNamespace(
+        transcribe=lambda **kw: seen.append(kw) or SimpleNamespace(transcript="x")))
+    s.transcribe_to_english(b"a", "hi-IN")
+    s.transcribe_to_english(b"a", "hi-IN", keyterms=["Ramesh"] * 60)
+    assert seen[0]["model"] == "saaras:v3" and "keyterms" not in seen[0] and seen[0]["mode"] == "translate"
+    assert seen[1]["model"] == "saaras:v4" and len(seen[1]["keyterms"]) == 50 and seen[1]["mode"] == "translate"

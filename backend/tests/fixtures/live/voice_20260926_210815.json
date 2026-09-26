@@ -1,0 +1,121 @@
+{
+  "entry": {
+    "status": 200,
+    "decision": "auto",
+    "entry": {
+      "id": "2656b819-d304-44ca-a9b6-81d4a9dc40b3",
+      "shop_id": "c3263abb-eef1-461c-ab5a-4f43e316e4b0",
+      "party_id": "381e1178-2916-4609-9379-36034aadd29a",
+      "type": "credit_given",
+      "amount_paise": 25000,
+      "note": "Ramesh was given ₹250 as a loan.",
+      "occurred_on": "2026-09-26",
+      "status": "confirmed",
+      "source": "voice",
+      "auto_saved": true,
+      "review_reason": "new party created automatically",
+      "receipt_id": null,
+      "voice_note_id": "f62e93f7-0b5a-4815-beb8-fcade0970287",
+      "created_by": "33248eba-6976-4fb8-86f7-b93f2d79a6c2",
+      "confirmed_by": "33248eba-6976-4fb8-86f7-b93f2d79a6c2",
+      "confirmed_at": "2026-09-26T15:38:04.934847+00:00",
+      "created_at": "2026-09-26T15:38:05.148194+00:00",
+      "updated_at": "2026-09-26T15:38:05.148194+00:00",
+      "party_name": "Ramesh",
+      "party_kind": "customer"
+    },
+    "suggestion": null,
+    "speech_text": "Ramesh, 250 rupees उधार लिए, saved.",
+    "voice_note_id": "f62e93f7-0b5a-4815-beb8-fcade0970287",
+    "transcript_en": "Ramesh was given ₹250 as a loan.",
+    "has_audio": true
+  },
+  "balances": [
+    {
+      "shop_id": "c3263abb-eef1-461c-ab5a-4f43e316e4b0",
+      "party_id": "381e1178-2916-4609-9379-36034aadd29a",
+      "display_name": "Ramesh",
+      "kind": "customer",
+      "needs_review": true,
+      "balance_paise": 25000,
+      "last_activity": "2026-09-26"
+    }
+  ],
+  "ask": {
+    "status": 200,
+    "text": "Ramesh के पास अभी 250 rupees due हैं।",
+    "question_en": "How much of Ramesh's is remaining?",
+    "voice_note_id": "8e7b4957-7bdb-41b4-9c84-5cbd85e03798",
+    "has_audio": true
+  },
+  "sarvam_calls": [
+    {
+      "call": "stt",
+      "lang": "hi-IN",
+      "mime": "audio/mp4",
+      "transcript": "Ramesh was given ₹250 as a loan."
+    },
+    {
+      "call": "translate",
+      "in": "Ramesh, 250 rupees udhaar, saved.",
+      "tgt": "hi-IN",
+      "out": "Ramesh, 250 rupees उधार लिए, saved."
+    },
+    {
+      "call": "tts",
+      "text": "Ramesh, 250 rupees उधार लिए, saved.",
+      "lang": "hi-IN",
+      "bytes": 46080
+    },
+    {
+      "call": "stt",
+      "lang": "hi-IN",
+      "mime": "audio/mp4",
+      "transcript": "How much of Ramesh's is remaining?"
+    },
+    {
+      "call": "translate",
+      "in": "Ramesh currently owes 250 rupees.",
+      "tgt": "hi-IN",
+      "out": "Ramesh के पास अभी 250 rupees due हैं।"
+    },
+    {
+      "call": "tts",
+      "text": "Ramesh के पास अभी 250 rupees due हैं।",
+      "lang": "hi-IN",
+      "bytes": 47232
+    }
+  ],
+  "groq_calls": [
+    {
+      "model": "openai/gpt-oss-20b",
+      "content": "{\"type\":\"credit_given\",\"party_name\":\"Ramesh\",\"amount_rupees\":250,\"note\":\"Ramesh was given ₹250 as a loan.\",\"occurred_on\":null,\"needs_clarification\":false,\"clarification_question\":null}",
+      "tool_calls": []
+    },
+    {
+      "model": "openai/gpt-oss-120b",
+      "content": null,
+      "tool_calls": [
+        {
+          "name": "find_party",
+          "args": "{\"name\":\"Ramesh\"}"
+        }
+      ]
+    },
+    {
+      "model": "openai/gpt-oss-120b",
+      "content": null,
+      "tool_calls": [
+        {
+          "name": "get_party_balance",
+          "args": "{\"party_id\":\"381e1178-2916-4609-9379-36034aadd29a\"}"
+        }
+      ]
+    },
+    {
+      "model": "openai/gpt-oss-120b",
+      "content": "Ramesh currently owes 250 rupees.",
+      "tool_calls": []
+    }
+  ]
+}

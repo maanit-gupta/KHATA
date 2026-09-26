@@ -167,7 +167,7 @@ cp .env.example .env            # fill in Supabase, Sarvam and Groq keys
 curl localhost:8000/health      # → {"ok":true}
 ```
 
-Tests: `.venv/bin/pytest -q` (about 300 tests, 10–15 minutes). Sarvam and Groq are always faked
+Tests: `.venv/bin/pytest -q` (about 210 tests, 10–15 minutes). Sarvam and Groq are always faked
 in tests; the database tests use the live Supabase project in `.env`, creating throwaway users
 through the admin API and deleting them (and their shops, audit rows and files) afterwards.
 

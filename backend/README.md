@@ -22,7 +22,7 @@ Render start command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
 
 ## Test
 ```bash
-.venv/bin/pytest -q          # ~300 tests, 10–15 min (live Supabase)
+.venv/bin/pytest -q          # ~210 tests, 10–15 min (live Supabase)
 ```
 - Sarvam and Groq are **always fakes** in tests (`tests/conftest.py` swaps them before every test),
   shaped like the real responses saved in `tests/fixtures/live/`. No test spends credits.

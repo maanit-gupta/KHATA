@@ -147,6 +147,7 @@ class FakeSarvam:
         self.translate_fn: Callable[[str, str], str] = lambda text, tgt: f"[{tgt}] {text}"
         self.fail: dict[str, Exception] = {}
         self.doc_jobs: list[dict] = []
+        self.keyterms: list = []
         self.jobs: dict[str, dict] = {}
 
     def _maybe_fail(self, what: str) -> None:
@@ -154,8 +155,9 @@ class FakeSarvam:
             raise self.fail[what]
 
     def transcribe_to_english(self, audio: bytes, lang: str, mime: str = "audio/webm",
-                              filename: str = "note.webm") -> str:
+                              filename: str = "note.webm", keyterms: list[str] | None = None) -> str:
         self.calls.append(("stt", lang, mime, filename))
+        self.keyterms.append(keyterms)
         self._maybe_fail("stt")
         assert self.transcripts, "test did not queue a transcript"
         return self.transcripts.pop(0)

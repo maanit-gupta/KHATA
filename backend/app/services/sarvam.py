@@ -48,10 +48,15 @@ class Sarvam:
         self.client = SarvamAI(api_subscription_key=os.environ["SARVAM_API_KEY"])
 
     def transcribe_to_english(self, audio: bytes, lang: str, mime: str = "audio/webm",
-                              filename: str = "note.webm") -> str:
+                              filename: str = "note.webm", keyterms: list[str] | None = None) -> str:
+        """saaras:v3 translate mode (CLAUDE.md §9b). With `keyterms` (the STT_PRIME_PARTY_NAMES
+        flag, off by default) it uses saaras:v4, the only model that accepts them (D-045)."""
+        extra: dict = {"model": "saaras:v3"}
+        if keyterms:
+            extra = {"model": "saaras:v4", "keyterms": keyterms[:50]}
         resp = _call(lambda: self.client.speech_to_text.transcribe(
-            file=(filename, audio, mime), model="saaras:v3", mode="translate",
-            language_code=lang, request_options=NO_RETRY), _speech_failed())
+            file=(filename, audio, mime), mode="translate", language_code=lang,
+            request_options=NO_RETRY, **extra), _speech_failed())
         return (resp.transcript or "").strip()
 
     def translate(self, text: str, src: str, tgt: str) -> str:

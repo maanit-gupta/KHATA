@@ -1,7 +1,8 @@
 # AUDIT.md: Phase 0 gap table
 
 Audit date: 2026-09-26 (IST). Branch `goal/complete-khata`, base commit `4b86e02`.
-Status values: **done** / **partial** / **missing** / **wrong**. The `Task` column points at the
+Status values: **done** / **partial** / **missing** / **wrong**. The Evidence column records what Phase 0
+found; the evidence for closing each row (tests, screenshots) is in PROGRESS.md under its task. The `Task` column points at the
 GOAL.md §5 task that closes the gap (`P#.x` = task added by this audit). The status column is
 updated as tasks close. The original Phase 0 status is kept in brackets when it changed.
 
@@ -25,7 +26,7 @@ updated as tasks close. The original Phase 0 status is kept in brackets when it 
 | RLS enabled on every table | Publishable key with no user token read 0 rows from all 9 tables and 3 views while 2 shops held data. | done |
 | Views `security_invoker` | User A reading `party_balances`, `daily_summary`, `review_queue` unfiltered got only shop A rows while shop B had rows. A non-invoker view would run as owner and leak. | done |
 | `shop_members_no_tamper` trigger (migration 001) | `tests/test_shops.py::test_member_cannot_tamper_with_membership[shop_id|role]` pass against live DB. Trigger name not verifiable without SQL. | done (behaviour) |
-| `find_party`, `is_member` functions | `find_party` RPC is used by voice/receipt code; not yet exercised by a test. | partial → P1.2/P3 |
+| `find_party`, `is_member` functions | Exercised by `test_voice_entry.py` (§12.3 did-you-mean), `test_voice_ask.py` (tools), and every RLS test (`is_member`). | done [partial] |
 
 ## C. CLAUDE.md requirements
 
@@ -38,13 +39,13 @@ updated as tasks close. The original Phase 0 status is kept in brackets when it 
 | STT translate mode with user lang, saaras:v3 | §2, §9b | done | `services/sarvam.py:39-43` | — |
 | Translate with `numerals_format="international"` | §2 | done | `services/sarvam.py:46-51` | — |
 | TTS in user lang + number guard fallback | §2 | done | `llm_router.localize_for_speech`, `routers/voice.py:_speak` | P3.4 tests |
-| UI strings only in `strings/en.ts` | §2 | partial | Mostly. Hardcoded: `●` glyph `LedgerScreen.tsx:91`; `DevUI` (dev only, allowed). | P7.2 |
+| UI strings only in `strings/en.ts` | §2 | done [partial] | Mostly. Hardcoded: `●` glyph `LedgerScreen.tsx:91`; `DevUI` (dev only, allowed). | P7.2 |
 | Email+password auth, confirm off | §3 | done | `AuthScreen.tsx` | — |
 | Owner = staff permissions | §3 | done | no role checks anywhere | — |
 | One user → one shop | §3 | done | `one_shop_per_user` index; `test_member_cannot_create_or_join_another_shop` | — |
 | Onboarding step 1 / step 2, en-IN preselected for joiners | §3 | done | `OnboardingScreen.tsx:69` | — |
-| Invite code visible to owner and staff in Settings | §3 | partial | `/me` returns it (test), Settings screen not built | P5.3 |
-| Display name in auth metadata; history shows "You"/"Another member" | §3 | partial | metadata set at signup; history not built | P5.2 |
+| Invite code visible to owner and staff in Settings | §3 | done [partial] | `/me` returns it (test), Settings screen not built | P5.3 |
+| Display name in auth metadata; history shows "You"/"Another member" | §3 | done [partial] | metadata set at signup; history not built | P5.2 |
 | Backend verifies token (JWKS, cached), user-scoped client | §3, §10 | done | `app/auth.py`, `app/db.py`; `tests/test_auth.py` | — |
 | Secret key only for /shops, /shops/join, Storage | §3, §10 | done | `admin_client()` used in `shops.py`, `voice.py:67`, `receipts.py:71` | P8.5 recheck |
 | 7 entry types, integer paise | §4 | done | `schema.sql`, `ledger.py:10` | P1.4 tests |
@@ -56,13 +57,13 @@ updated as tasks close. The original Phase 0 status is kept in brackets when it 
 | `decide_save` deterministic, thresholds 0.6/0.15/0.3, cap ₹5,000 | §5 | done | `llm_router.py:decide_save` | P3.4 tests |
 | New party `name_latin` = English transcript lowercased+trimmed | §5, §9b | done | `voice.py:99-101` | P3 tests |
 | Clarify: save nothing, speak question | §5.1 | done | `voice.py:90-93` | P3.4 tests |
-| Did-you-mean card, no new party created | §5.2, §12 | partial | pending entry created with the suggested party; no `/voice/entry/resolve`, no chips | P3.1 |
+| Did-you-mean card, no new party created | §5.2, §12 | done [partial] | pending entry created with the suggested party; no `/voice/entry/resolve`, no chips | P3.1 |
 | Auto-save + Undo 5 s | §5.4 | done | `LedgerScreen.tsx`, `Toast.tsx` | — |
-| Hold to record 30 s cap, countdown, 0.7 s min | §6.1 | partial | `useHoldRecorder.ts` has cap/min; hairline never turns white at 25 s | P3.3, P7.2 |
+| Hold to record 30 s cap, countdown, 0.7 s min | §6.1 | done [partial] | `useHoldRecorder.ts` has cap/min; hairline never turns white at 25 s | P3.3, P7.2 |
 | Audio → `voice` bucket + `voice_notes` row | §6.1 | done | `voice.py:65-69` | — |
-| MediaRecorder WebM/MP4 sent as-is | §6.1 | partial | MP4 accepted by MIME map; no server-side size limit; unknown MIME silently stored as .webm | P3.3, P8.5 |
+| MediaRecorder WebM/MP4 sent as-is | §6.1 | done [partial] | MP4 accepted by MIME map; no server-side size limit; unknown MIME silently stored as .webm | P3.3, P8.5 |
 | Result card + TTS read-back | §6.1 | done | `LedgerScreen.tsx:ResultCard` | — |
-| Voice question pipeline, read-only tools, shop_id injected | §6.2 | missing | `voice_question_pipeline` exists in router but no tools_impl, no route | P4 |
+| Voice question pipeline, read-only tools, shop_id injected | §6.2 | done [missing] | `voice_question_pipeline` exists in router but no tools_impl, no route | P4 |
 | Receipt scan: kind, Paid/Credit or Cash/Udhaar | §6.3.1-2 | done | `ScanScreen.tsx` | P7.2 visuals |
 | Receipt image in `receipts` bucket | §6.3.3 | done | `receipts.py:71` | — |
 | Document AI extract, poll 2 s, 90 s timeout | §6.3.4 | done [wrong] | synchronous inside the request, 60 s timeout; results come back empty | P2 |
@@ -74,27 +75,27 @@ updated as tasks close. The original Phase 0 status is kept in brackets when it 
 | Save rules apply to receipts | §6.3.8 | done | `receipts.py` uses `decide_save` | P2 tests |
 | `raw_extract` keeps full OCR JSON | §6.3 | done | `receipts.py:92` | — |
 | Receipt save is idempotent | (implied §4) | done [wrong] | a double tap on Save creates two entries for one bill | P2.5 (new) |
-| Weekly summary card, Mon–Sun IST, cached, SQL metrics, rupees to narrate | §6.4, §9b | missing | no route, no UI | P6 |
-| API: every route in §6.5 | §6.5 | partial | see section D | P1–P6 |
-| Error shape `{error:{code,message}}` | §6.5 | partial | handlers in `errors.py`; but bad UUID/enum/date inputs reach PostgREST and come back as a 500 "Something went wrong" | P1.7, P1.8 (new) |
+| Weekly summary card, Mon–Sun IST, cached, SQL metrics, rupees to narrate | §6.4, §9b | done [missing] | no route, no UI | P6 |
+| API: every route in §6.5 | §6.5 | done [partial] | see section D | P1–P6 |
+| Error shape `{error:{code,message}}` | §6.5 | done [partial] | handlers in `errors.py`; but bad UUID/enum/date inputs reach PostgREST and come back as a 500 "Something went wrong" | P1.7, P1.8 (new) |
 | Routes and guards `/app/*` | §7 | done | `App.tsx`, `auth/guards.tsx` | — |
-| Landing page at `/` | §7 | missing | `/` redirects to `/login` (`App.tsx:35`) | P7.1 |
-| Offline overlay + RETRY | §8 | missing | fetch failure → inline message only | P8.1 |
+| Landing page at `/` | §7 | done [missing] | `/` redirects to `/login` (`App.tsx:35`) | P7.1 |
+| Offline overlay + RETRY | §8 | done [missing] | fetch failure → inline message only | P8.1 |
 | 429/503 retry 1 s/2 s/4 s then "Service busy", save nothing | §8 | done [wrong] | Sarvam: 1 retry after 1 s (`sarvam.py:_call`); Groq: SDK default 2 retries with its own backoff, no "Service busy" mapping (a Groq 429 becomes a 500) | P1.7 |
-| Mic permission denied → instruction screen | §8 | partial | one-line inline error | P3.3 |
+| Mic permission denied → instruction screen | §8 | done [partial] | one-line inline error | P3.3 |
 | Private buckets, `{shop_id}/{uuid}.{ext}` | §9 | done | probe: both buckets `public=False`; paths in `voice.py:66`, `receipts.py:70` | — |
 | Signed URLs 10 min | §9 | done (API) [missing] | no `/media` route | P5.4 |
 | Asia/Kolkata everywhere | §9b | done | `ledger.py:today_ist`; grep finds no `utcnow`/`date.today` | P1.5 test |
 | Default TTS voice per language; `varun` hidden | §9b | done | `constants.py` | P5.3 |
-| Settings voice sample "Ramesh owes you 250 rupees." | §9b | missing | — | P5.3 |
+| Settings voice sample "Ramesh owes you 250 rupees." | §9b | done [missing] | — | P5.3 |
 | Read-back/clarify composed in English → localize | §9b | done | `voice.py:_speak` | P3.4 tests |
-| Clarify answer join `first + " " + answer` | §9b | missing | — | P3.2 |
+| Clarify answer join `first + " " + answer` | §9b | done [missing] | — | P3.2 |
 | `purchase_paid` receipt links supplier party; expense vendor → note | §9b | done | `receipts.py:128-157` | P2 tests |
 | Python 3.12 pinned | §9b | done | `runtime.txt`, `render.yaml` | — |
 | Tests create/delete throwaway users | §9b | done [wrong] | cleanup breaks once an entry exists (section A) | P1.1 |
 | JWKS verification, no JWT secret | §10 | done | `auth.py` | — |
 | `.env.example` files | §10 | done | both exist | — |
-| Acceptance tests §12 (8 scenarios) | §12 | missing | none automated except isolation (partial) | P1–P3, P4 |
+| Acceptance tests §12 (8 scenarios) | §12 | done [missing] | `test_voice_entry.py::test_12_1…test_12_4`, `test_voice_ask.py::test_12_5…`, `test_receipts.py::test_supplier_credit_scan_edit_total_and_save`, `test_isolation.py`, `test_audit.py` | P1–P4 |
 | Migration 001 applied | §12b | done (behaviour) | tamper tests pass | P1.3 |
 
 ## D. API table (§6.5) vs code
@@ -116,13 +117,13 @@ updated as tasks close. The original Phase 0 status is kept in brackets when it 
 | PATCH /entries/{id} | `entries.py:edit_entry` | done [missing] | P5.2 |
 | POST /entries/{id}/confirm | `entries.py:confirm_entry` | done | |
 | POST /entries/{id}/void | `entries.py:void_entry` | done | |
-| POST /voice/entry | `voice.py:voice_entry` | partial | no clarify join, no size/MIME limit, Groq errors → 500 |
-| POST /voice/entry/resolve | — | missing | P3.1 |
-| POST /voice/ask | — | missing | P4 |
+| POST /voice/entry | `voice.py:voice_entry` | done [partial] | no clarify join, no size/MIME limit, Groq errors → 500 |
+| POST /voice/entry/resolve | — | done [missing] | P3.1 |
+| POST /voice/ask | — | done [missing] | P4 |
 | POST /receipts | `receipts.py:create_receipt` | done [wrong] | synchronous OCR, returns the full receipt, not `{receipt_id}` + BackgroundTask |
 | GET /receipts/{id} | `receipts.py:get_receipt` | done | |
 | POST /receipts/{id}/save | `receipts.py:save_receipt` | done [partial] | not idempotent; leaves failed receipts in the queue |
-| GET /insights/weekly | — | missing | P6 |
+| GET /insights/weekly | — | done [missing] | P6 |
 | POST /tts | `tts.py` | done [missing] | P5.3 |
 | GET /review | `review.py` | done [missing] | P5.1 |
 | GET /media/{bucket}/{id} | `media.py` | done [missing] | P5.4 |
@@ -133,26 +134,26 @@ updated as tasks close. The original Phase 0 status is kept in brackets when it 
 |---|---|---|---|---|
 | Login/Signup split | §6.1 | done | `AuthScreen.tsx`, `SplitLayout.tsx` | — |
 | Onboarding split, 6 language rows | §6.2 | done | `OnboardingScreen.tsx` | — |
-| Ledger voice panel: HOLD TO ADD, HOLD TO ASK, SCAN A BILL → | §6.3 | partial | only HOLD TO ADD + "Add by hand" | P4.3, P7.2 |
-| Answer card with ▶ square | §6.3 | missing | — | P4.3 |
-| "This week, so far." block | §6.3 | missing | — | P6 |
-| Recent rows tap → Entry edit | §6.3 | wrong | rows open the party (`LedgerScreen.tsx:171`) | P5.2 |
-| Recording: label, hairline 30 s, white at 25 s | §6.4 | partial | hairline is cyan and never turns white | P7.2 |
+| Ledger voice panel: HOLD TO ADD, HOLD TO ASK, SCAN A BILL → | §6.3 | done [partial] | only HOLD TO ADD + "Add by hand" | P4.3, P7.2 |
+| Answer card with ▶ square | §6.3 | done [missing] | — | P4.3 |
+| "This week, so far." block | §6.3 | done [missing] | — | P6 |
+| Recent rows tap → Entry edit | §6.3 | done [wrong] | rows open the party (`LedgerScreen.tsx:171`) | P5.2 |
+| Recording: label, hairline 30 s, white at 25 s | §6.4 | done [partial] | hairline is cyan and never turns white | P7.2 |
 | Undo toast | §6.5 | done | `Toast.tsx` | — |
-| Pending card CONFIRM → / EDIT; did-you-mean chips; clarify HOLD TO ANSWER | §6.6 | partial | Confirm + Void only | P3.1, P3.2 |
-| Scan: tall kind cards, big chips, preview + RibbedGlass strip, dark form, SAVE ENTRY → | §6.7 | partial | chips only, no preview, light form, "Save" | P2.4, P7.2 |
-| Parties: search + CUSTOMERS/SUPPLIERS chips | §6.8 | partial | list only | P7.2 |
-| Party detail: H2 name, Amount-style balance, ▶ / → evidence | §6.9 | partial | balance is H2 line 2; no evidence controls | P5.4 |
-| Review queue | §6.10 | missing | placeholder | P5.1 |
-| Entry edit + history + VOID confirm | §6.11 | missing | placeholder | P5.2 |
-| Settings | §6.12 | partial | LOG OUT only | P5.3 |
-| Empty ledger copy + PixelSquares | §6.13 | wrong | "No entries yet. Hold the button and say one." | P7.2 |
-| Offline overlay | §6.13 | missing | — | P8.1 |
-| Landing (Hero, HowItWorks, PrinciplesSplit, SayItYourWay, BuiltBy, Footer) | §7 | missing | — | P7.1 |
-| Nav chips LEDGER/PARTIES/REVIEW/SETTINGS + review count | §5 | wrong | extra SCAN chip; count never passed (`AppShell.tsx:137`) | P5.1, P7.2 |
+| Pending card CONFIRM → / EDIT; did-you-mean chips; clarify HOLD TO ANSWER | §6.6 | done [partial] | Confirm + Void only | P3.1, P3.2 |
+| Scan: tall kind cards, big chips, preview + RibbedGlass strip, dark form, SAVE ENTRY → | §6.7 | done [partial] | chips only, no preview, light form, "Save" | P2.4, P7.2 |
+| Parties: search + CUSTOMERS/SUPPLIERS chips | §6.8 | done [partial] | list only | P7.2 |
+| Party detail: H2 name, Amount-style balance, ▶ / → evidence | §6.9 | done [partial] | balance is H2 line 2; no evidence controls | P5.4 |
+| Review queue | §6.10 | done [missing] | placeholder | P5.1 |
+| Entry edit + history + VOID confirm | §6.11 | done [missing] | placeholder | P5.2 |
+| Settings | §6.12 | done [partial] | LOG OUT only | P5.3 |
+| Empty ledger copy + PixelSquares | §6.13 | done [wrong] | "No entries yet. Hold the button and say one." | P7.2 |
+| Offline overlay | §6.13 | done [missing] | — | P8.1 |
+| Landing (Hero, HowItWorks, PrinciplesSplit, SayItYourWay, BuiltBy, Footer) | §7 | done [missing] | — | P7.1 |
+| Nav chips LEDGER/PARTIES/REVIEW/SETTINGS + review count | §5 | done [wrong] | extra SCAN chip; count never passed (`AppShell.tsx:137`) | P5.1, P7.2 |
 | Radius 0, no shadows, weight 400 | §1 | done | global reset `index.css:114-118` | — |
-| No icons except → and squares | §1 | wrong | `●` in hold button (`LedgerScreen.tsx:91`) | P7.2 |
-| `--muted` never on amounts/names/dates/errors | §2 | wrong | dates in entry rows are `text-muted` (`LedgerScreen.tsx:174`) | P7.2 |
+| No icons except → and squares | §1 | done [wrong] | `●` in hold button (`LedgerScreen.tsx:91`) | P7.2 |
+| `--muted` never on amounts/names/dates/errors | §2 | done [wrong] | dates in entry rows are `text-muted` (`LedgerScreen.tsx:174`) | P7.2 |
 | Focus ring 2px square | §9 | done | `index.css:137` | P8.2 |
 | Page transitions | §8 | done | `PageTransition.tsx` | — |
 | Reduced motion (static ribs, instant reveals, linear countdowns) | §8 | done | `RibbedGlass.tsx`, `useReveal.ts`, `.countdown` | P7.3 test |

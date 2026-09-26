@@ -55,3 +55,9 @@ def get_settings() -> Settings:
         supabase_secret_key=os.environ["SUPABASE_SECRET_KEY"],
         allowed_origins=origins,
     )
+
+
+def stt_prime_party_names() -> bool:
+    """Feature flag (GOAL.md stretch, D-045): bias entry STT toward the shop's party names.
+    Off unless STT_PRIME_PARTY_NAMES is 1/true. Read per call so it can be flipped without code."""
+    return os.environ.get("STT_PRIME_PARTY_NAMES", "").strip().lower() in ("1", "true", "yes")
