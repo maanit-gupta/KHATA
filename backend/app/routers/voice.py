@@ -19,6 +19,7 @@ from pydantic import BaseModel, ConfigDict
 
 from ..auth import CurrentUser, current_user
 from ..qa_tools import make_tools
+from ..ratelimit import rate_limit
 from ..db import user_client
 from ..errors import AppError
 from ..ledger import (NO_PARTY_TYPES, check_uuid, not_found, now_iso, parse_iso_date, party_kind_for,
@@ -122,7 +123,7 @@ def _valid_date(iso: str | None) -> str | None:
         return None
 
 
-@router.post("/voice/entry")
+@router.post("/voice/entry", dependencies=[Depends(rate_limit("voice"))])
 def voice_entry(audio: UploadFile = File(...), answer_to: str | None = Form(None),
                 user: CurrentUser = Depends(current_user)):
     m = require_membership(user)
@@ -179,7 +180,7 @@ class Resolve(BaseModel):
     choice: Literal["use_suggested", "create_new"]
 
 
-@router.post("/voice/entry/resolve")
+@router.post("/voice/entry/resolve", dependencies=[Depends(rate_limit("voice"))])
 def resolve(body: Resolve, user: CurrentUser = Depends(current_user)):
     """Re-run the save decision for a "Did you mean X?" entry with the user's answer."""
     m = require_membership(user)
@@ -216,7 +217,7 @@ def resolve(body: Resolve, user: CurrentUser = Depends(current_user)):
                     None, note.get("transcript_en"))
 
 
-@router.post("/voice/ask")
+@router.post("/voice/ask", dependencies=[Depends(rate_limit("voice"))])
 def voice_ask(audio: UploadFile = File(...), user: CurrentUser = Depends(current_user)):
     """CLAUDE.md §6.2: STT (translate) → Groq Q&A with read-only tools → translate back + number
     guard → TTS. shop_id is injected server-side. The recording is kept (voice_notes, purpose

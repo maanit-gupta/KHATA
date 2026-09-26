@@ -1,23 +1,27 @@
 import { lazy, Suspense, useEffect } from 'react'
 import { Route } from 'react-router'
 import { PublicOnly, RequireSessionWithoutShop, RequireShop } from './auth/guards'
+import { OfflineOverlay } from './components/OfflineOverlay'
 import { TransitionRoutes } from './components/ui/PageTransition'
 import { AppShell } from './screens/AppShell'
-import { EntryScreen } from './screens/EntryScreen'
-import { ReviewScreen } from './screens/ReviewScreen'
-import { SettingsScreen } from './screens/SettingsScreen'
-import { AboutScreen } from './screens/AboutScreen'
 import { AuthScreen } from './screens/AuthScreen'
 import { LedgerScreen } from './screens/LedgerScreen'
-import { PartiesScreen, PartyDetailScreen } from './screens/PartiesScreen'
-import { ScanScreen } from './screens/ScanScreen'
-import { OnboardingScreen } from './screens/OnboardingScreen'
 import { enterDemo } from './lib/demo'
 import { t } from './strings/en'
 
 // /dev/ui exists only in dev: Vite replaces import.meta.env.DEV with false in production builds,
 // so these imports are dead code and the gallery is not bundled.
+// Ledger, log-in and the app shell ship in the main chunk; everything else loads on first visit
+// (GOAL.md P8.3). Each lazy screen is its own small chunk.
 const LandingScreen = lazy(() => import('./screens/LandingScreen'))
+const AboutScreen = lazy(() => import('./screens/AboutScreen').then((m) => ({ default: m.AboutScreen })))
+const OnboardingScreen = lazy(() => import('./screens/OnboardingScreen').then((m) => ({ default: m.OnboardingScreen })))
+const PartiesScreen = lazy(() => import('./screens/PartiesScreen').then((m) => ({ default: m.PartiesScreen })))
+const PartyDetailScreen = lazy(() => import('./screens/PartiesScreen').then((m) => ({ default: m.PartyDetailScreen })))
+const ReviewScreen = lazy(() => import('./screens/ReviewScreen').then((m) => ({ default: m.ReviewScreen })))
+const EntryScreen = lazy(() => import('./screens/EntryScreen').then((m) => ({ default: m.EntryScreen })))
+const ScanScreen = lazy(() => import('./screens/ScanScreen').then((m) => ({ default: m.ScanScreen })))
+const SettingsScreen = lazy(() => import('./screens/SettingsScreen').then((m) => ({ default: m.SettingsScreen })))
 
 const DevUI = import.meta.env.DEV ? lazy(() => import('./dev/DevUI')) : null
 const DevTransition = import.meta.env.DEV
@@ -67,6 +71,7 @@ export function App() {
         {DevTransition && <Route path="/dev/ui/transition" element={<DevTransition />} />}
         <Route path="*" element={<NotFound />} />
       </TransitionRoutes>
+      <OfflineOverlay />
     </Suspense>
   )
 }

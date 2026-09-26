@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react'
-import { useReveal } from '../../hooks/useReveal'
 
 /**
  * Landing motion (DESIGN.md §8): IntersectionObserver at 15%, no bounce, var(--ease).
@@ -7,10 +6,6 @@ import { useReveal } from '../../hooks/useReveal'
  * ink (or white) over 600ms. CSS transitions with `motion-ui`, so reduced motion makes them
  * instant (and useReveal starts revealed).
  */
-export function useSectionReveal(key: string) {
-  return useReveal<HTMLElement>({ key: `landing-${key}`, observe: true })
-}
-
 export function Rise({ revealed, children, className = '' }: { revealed: boolean; children: ReactNode; className?: string }) {
   return (
     <div className={`motion-ui transition-[transform,opacity] duration-700 ease-brand ${revealed ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'} ${className}`}>

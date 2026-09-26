@@ -23,8 +23,35 @@ from supabase import ClientOptions, create_client
 from app.config import get_settings
 from app.db import admin_client
 from app.main import app
+from app import ratelimit
 from app.services import llm_router, receipt_ocr, retry
 from app.services import sarvam as sarvam_service
+
+
+def api_routes() -> set[tuple[str, str]]:
+    """Every (method, path) the app serves. FastAPI 0.141 wraps included routers in
+    `_IncludedRouter`, so walk `original_router` instead of trusting `app.routes`."""
+    from fastapi.routing import APIRoute
+
+    def walk(routes):
+        for r in routes:
+            if isinstance(r, APIRoute):
+                yield r
+            elif hasattr(r, "original_router"):
+                yield from walk(r.original_router.routes)
+    return {(m, r.path) for r in walk(app.routes) for m in r.methods}
+
+
+def api_route_objects():
+    from fastapi.routing import APIRoute
+
+    def walk(routes):
+        for r in routes:
+            if isinstance(r, APIRoute):
+                yield r
+            elif hasattr(r, "original_router"):
+                yield from walk(r.original_router.routes)
+    return list(walk(app.routes))
 
 
 @pytest.fixture(scope="session")
@@ -230,6 +257,7 @@ class FakeGroq:
 
 @pytest.fixture(autouse=True)
 def fake_ai(monkeypatch):
+    ratelimit.reset()   # every test starts with full per-user buckets
     fs, fg = FakeSarvam(), FakeGroq()
     monkeypatch.setattr(sarvam_service, "_client", fs)
     monkeypatch.setattr(llm_router, "groq", fg)

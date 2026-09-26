@@ -68,3 +68,34 @@ def install_error_handlers(app: FastAPI) -> None:
         log.exception("unhandled error")  # stack trace to logs; never secrets in the message
         return JSONResponse(_body("server_error", "Something went wrong on our side. Try again."),
                             status_code=500)
+
+
+class CatchAllErrors:
+    """Pure ASGI middleware, installed INSIDE CORSMiddleware. Starlette sends unhandled exceptions
+    to ServerErrorMiddleware, which sits outside every user middleware, so its 500 would carry no
+    CORS headers; the browser then reports a network failure and the app would show "No internet"
+    for what is really a server bug. Catching here keeps the {"error": ...} body and CORS."""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            return await self.app(scope, receive, send)
+        started = False
+
+        async def tracked(message):
+            nonlocal started
+            if message["type"] == "http.response.start":
+                started = True
+            await send(message)
+
+        try:
+            await self.app(scope, receive, tracked)
+        except Exception:
+            log.exception("unhandled error")  # stack trace to logs; never secrets in the message
+            if started:
+                raise
+            response = JSONResponse(_body("server_error", "Something went wrong on our side. Try again."),
+                                    status_code=500)
+            await response(scope, receive, send)

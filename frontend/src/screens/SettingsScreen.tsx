@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
-import { useMe } from '../auth/session'
+import { useMe } from '../auth/hooks'
 import { ChipButton } from '../components/ui/Chip'
 import { Row } from '../components/ui/Row'
 import { api, type Membership } from '../lib/api'

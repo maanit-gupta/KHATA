@@ -15,35 +15,32 @@ export function TransitionRoutes({ children }: { children: ReactNode }) {
   const location = useLocation()
   const reduced = useReducedMotion()
   const [shown, setShown] = useState(location)
-  const [phase, setPhase] = useState<'idle' | 'cover' | 'reveal'>('idle')
+  const [risen, setRisen] = useState(false)
+  const newPage = location.pathname !== shown.pathname
+
+  // Same page (query/hash/state), or reduced motion: swap during render, no cover.
+  if (location !== shown && (!newPage || reduced)) setShown(location)
+  const covering = newPage && !reduced
 
   useEffect(() => {
-    if (location.pathname === shown.pathname) {
-      if (location !== shown) setShown(location) // same page (query/hash/state): no cover
-      return
-    }
-    if (reduced) {
-      setShown(location)
-      return
-    }
-    setPhase('cover')
+    if (!covering) return
     const id = window.setTimeout(() => {
       setShown(location)
-      setPhase('reveal')
+      setRisen(true)
       window.scrollTo(0, 0)
     }, COVER_MS)
     return () => window.clearTimeout(id)
-  }, [location, shown, reduced])
+  }, [covering, location])
 
   return (
     <>
       {/* CSS animation with fill-mode `backwards`: once the rise ends no transform remains, so
           position:fixed headers inside the page stay pinned to the viewport. */}
-      <div key={shown.pathname} className={phase === 'reveal' ? 'route-rise' : undefined}>
+      <div key={shown.pathname} className={risen && !reduced ? 'route-rise' : undefined}>
         <Routes location={shown}>{children}</Routes>
       </div>
       <AnimatePresence>
-        {phase === 'cover' && (
+        {covering && (
           <motion.div
             aria-hidden
             className="fixed inset-0 z-[60] bg-bone"

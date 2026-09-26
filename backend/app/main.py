@@ -6,12 +6,15 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import get_settings
-from .errors import install_error_handlers
+from .errors import CatchAllErrors, install_error_handlers
 from .routers import entries, insights, me, media, parties, receipts, review, shops, tts, voice
 
 logging.basicConfig(level=logging.INFO)
+# httpx logs every request URL at INFO (Supabase filters carry user ids). Keep only warnings.
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
 app = FastAPI(title="Kirana Ledger API")
+app.add_middleware(CatchAllErrors)  # added first = innermost, so its 500s still get CORS headers
 app.add_middleware(
     CORSMiddleware,
     allow_origins=get_settings().allowed_origins,

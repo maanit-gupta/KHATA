@@ -9,13 +9,11 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 import pytest
-from fastapi.routing import APIRoute
 from postgrest.exceptions import APIError
 
 from app.db import admin_client, user_client
-from app.main import app
 from app.storage import upload
-from tests.conftest import AUDIO, Users, post_audio
+from tests.conftest import AUDIO, Users, api_routes, post_audio
 
 PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 64
 
@@ -270,12 +268,27 @@ OWN_SHOP_ONLY = {
 }
 
 
-def _routes() -> set[tuple[str, str]]:
-    return {(m, r.path) for r in app.routes if isinstance(r, APIRoute) for m in r.methods}
+# CLAUDE.md §6.5, every row (plus /health).
+SPEC_ROUTES = {
+    ("GET", "/health"), ("GET", "/me"), ("PATCH", "/me"), ("POST", "/shops"), ("POST", "/shops/join"),
+    ("GET", "/parties"), ("GET", "/parties/{party_id}"), ("PATCH", "/parties/{party_id}"),
+    ("POST", "/parties/{party_id}/merge"), ("GET", "/entries"), ("POST", "/entries"),
+    ("GET", "/entries/{entry_id}"), ("PATCH", "/entries/{entry_id}"), ("POST", "/entries/{entry_id}/confirm"),
+    ("POST", "/entries/{entry_id}/void"), ("POST", "/voice/entry"), ("POST", "/voice/entry/resolve"),
+    ("POST", "/voice/ask"), ("POST", "/receipts"), ("GET", "/receipts/{receipt_id}"),
+    ("POST", "/receipts/{receipt_id}/save"), ("GET", "/insights/weekly"), ("POST", "/tts"), ("GET", "/review"),
+    ("GET", "/media/{bucket}/{item_id}"),
+}
+
+
+def test_app_serves_exactly_the_spec_routes():
+    assert api_routes() == SPEC_ROUTES
 
 
 def test_every_route_is_covered():
-    missing = _routes() - set(CASES) - set(OWN_SHOP_ONLY)
+    routes = api_routes()
+    assert len(routes) == 25   # guards against a route walker that silently finds nothing
+    missing = routes - set(CASES) - set(OWN_SHOP_ONLY)
     assert not missing, f"add an isolation case for: {sorted(missing)}"
 
 

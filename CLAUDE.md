@@ -138,18 +138,18 @@ Only total, vendor, and date are stored as fields; the full raw OCR JSON is kept
 | POST /parties/{id}/merge | `{into_party_id}` | moves all entries to target, adds this name as alias, deletes the now-empty party |
 | GET /entries | `?limit=20&status=` | entries, newest first |
 | POST /entries | `{type, amount_rupees, party_id?, party_name?, note?, occurred_on?}` | entry (manual source, status confirmed) |
-| GET /entries/{id} | — | entry + audit history |
+| GET /entries/{id} | — | `{entry, history}`; history rows `{action, at, by: you/another_member, changes:[{field, old, new}]}` (D-009) |
 | PATCH /entries/{id} | any editable field | entry |
 | POST /entries/{id}/confirm | — | entry |
 | POST /entries/{id}/void | — | entry (also used by Undo) |
-| POST /voice/entry | multipart `audio` | `{decision: auto/confirm/clarify, entry?, suggestion?, speech_text, audio_b64, voice_note_id}` |
+| POST /voice/entry | multipart `audio`, `answer_to?` (voice_note_id of a clarify question, D-018) | `{decision: auto/confirm/clarify, entry?, suggestion?, speech_text, audio_b64, voice_note_id}` |
 | POST /voice/entry/resolve | `{voice_note_id, choice: use_suggested/create_new}` | same shape as above, re-run from the save decision |
 | POST /voice/ask | multipart `audio` | `{text, audio_b64}` |
-| POST /receipts | multipart `image`, `kind`, `settled?` | `{receipt_id}`; OCR runs as a BackgroundTask |
+| POST /receipts | multipart `image`, `kind`, `settled?` | `{receipt_id, status}`; OCR runs as a BackgroundTask |
 | GET /receipts/{id} | — | status, vendor_name, bill_date, total_paise, error |
 | POST /receipts/{id}/save | `{vendor_name, bill_date, total_rupees, customer_name?}` | entry + decision (save rules apply) |
 | GET /insights/weekly | — | metrics, narration (in caller's language, number-guarded) |
-| POST /tts | `{text}` (≤ 2500 chars) | `{audio_b64}` in caller's language/voice |
+| POST /tts | `{text}` English, ≤ 2500 chars; localized with the number guard first (D-006) | `{text, audio_b64}` in caller's language/voice |
 | GET /review | — | rows of `review_queue` |
 | GET /media/{voice or receipts}/{id} | — | `{url}` signed, 10 min |
 
@@ -228,3 +228,20 @@ until the human says so.
 - Supabase free-tier storage is limited, and keeping audio forever will eventually need a plan upgrade.
 - Handwritten and faded thermal bills: OCR accuracy is unknown until tested on real samples.
 - The fuzzy-match thresholds (0.6 / 0.15 / 0.3) are starting guesses; tune them on real names.
+
+## 14. Spec changes from the GOAL.md run (each is logged in DECISIONS.md)
+- Build order: GOAL.md replaces the missing `PROMPTS.md` (D-001).
+- §8 retries: first call + up to 3 retries after 1 s, 2 s, 4 s; SDK retries off (D-004).
+- §4: voided entries can't be edited (D-010). Amounts with more than 2 decimals or ≤ 0 are refused (D-005).
+- §5 "Did you mean": the pending entry is created against the suggestion; `POST /voice/entry/resolve`
+  re-runs `decide_save` (D-019).
+- §6.2 Q&A: an answer whose numbers don't all come from tool results (or the question) is replaced by
+  "I could not answer that reliably. Try asking a different way." (D-020). Tool amounts are rupees (D-021).
+- §6.3 receipts: if Extract still has no total after the English retry, Digitise + Groq reads the bill
+  text and the total is kept only if it appears in that text (D-012). No English retry for en-IN
+  users (D-013). A receipt is `failed` only when the total is missing (D-014). A job still running
+  after 5 minutes is reported failed (D-015). One live entry per receipt (D-016, migration 002).
+- §6.4 insights: "this week so far" is compared with all of last week, Mon–Sun (D-029); narrations are
+  number-guarded with a template fallback (D-031) and cached per language (D-030).
+- Review queue: new parties also get KEEP AS IS (D-025).
+- Voice, receipt and TTS routes are rate-limited per user; over the limit → 429 `rate_limited` (D-037).

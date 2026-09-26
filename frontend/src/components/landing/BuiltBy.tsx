@@ -1,5 +1,6 @@
 import { t } from '../../strings/en'
-import { RevealHeading, Rise, useSectionReveal } from './reveal'
+import { RevealHeading, Rise } from './reveal'
+import { useSectionReveal } from '../../hooks/useSectionReveal'
 
 const L = t.landing
 

@@ -48,6 +48,7 @@ export class MockApi {
   askQueue: unknown[] = []
   offline = false
   delayMs: Record<string, number> = {}
+  failNext: Record<string, { status: number; error: { code: string; message: string } }> = {}
   calls: { method: string; path: string; body: unknown }[] = []
   insights: unknown = null
   private seq = 0
@@ -169,10 +170,16 @@ export class MockApi {
     }
     this.calls.push({ method, path: path + url.search, body })
     if (this.offline) return route.abort('internetdisconnected')
+    const fail = this.failNext[`${method} ${seg[0]}`]
+    if (fail) {
+      delete this.failNext[`${method} ${seg[0]}`]
+      return route.fulfill({ status: fail.status, json: { error: fail.error } })
+    }
     const wait = this.delayMs[`${method} ${seg[0]}`]
     if (wait) await new Promise((r) => setTimeout(r, wait))
     const ok = (json: unknown, status = 200) => route.fulfill({ status, json })
 
+    if (path === '/health') return ok({ ok: true })
     if (path === '/me' && method === 'GET') return ok(this.me())
     if (path === '/me' && method === 'PATCH') {
       if (typeof body.lang === 'string') this.lang = body.lang

@@ -392,6 +392,15 @@ export const en = {
   errors: {
     loading: 'Loading…',
     notFound: 'That page does not exist.',
+    waking: 'Waking the server…',
+    wakingHelp: 'The first request after a quiet spell can take up to a minute.',
+  },
+
+  offline: {
+    heading: ['No internet.', 'Entries can’t be saved right now.'],
+    retry: 'Retry',
+    still: 'Still no connection. Check your internet, then retry.',
+    network: 'No internet. Entries can’t be saved right now.',
   },
 } as const
 

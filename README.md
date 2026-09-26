@@ -42,13 +42,16 @@ can be photographed instead of typed.
 
 ### Guided tour of the demo
 
-- [ ] **Ledger.** Recent entries for the sample shop. Tap **Add by hand** → *Credit given*, ₹300, "Ramesh" → **Save entry**, then **Undo** within 5 seconds.
+- [ ] **Ledger.** The sample shop's recent entries and **This week, so far.** Tap **Add by hand** → *Credit given*, ₹300, "Ramesh" → **Save entry**, then **Undo** within 5 seconds.
 - [ ] **Hold to add.** Hold the black button for a second and release. Each press adds the next canned voice note:
   - 1st: *Ramesh, ₹250 udhaar*: **auto-saved** with an Undo toast
   - 2nd: *Lakshmi, ₹500 payment received*: auto-saved
   - 3rd: *Suresh, ₹6,000 udhaar*: over ₹5,000, so it waits as **pending** until you tap **Confirm**
-- [ ] **Scan.** Tap **Supplier** → **Credit** → pick any JPG/PNG. The vendor, date and total fill in; **edit the total**, then **Save**.
-- [ ] **Parties.** The new supplier shows up flagged **NEW**, with *You owe ₹…*. Tap a party to see its entries.
+  - 4th: *Rakesh, ₹100 udhaar*: close to Ramesh, so it asks **Did you mean Ramesh?**
+- [ ] **Hold to ask.** A canned answer: who owes you the most.
+- [ ] **Scan a bill.** **Supplier** → **Credit** → pick any JPG/PNG. The vendor, date and total fill in after a moment; **edit the total**, then **Save entry**.
+- [ ] **Review.** Pending entries and new people. **Edit** an entry to see its history (old → new).
+- [ ] **Parties** and **Settings** (language, voice, invite code). Use the nav: a page reload resets the demo.
 
 <details>
 <summary><b>What the real app does differently</b></summary>
@@ -56,6 +59,7 @@ can be photographed instead of typed.
 | Step | Demo mode | Real account |
 |---|---|---|
 | Voice | Canned sentences, no microphone upload | Audio → Sarvam `saaras:v3` (translate to English) → Groq `parse_entry` |
+| Questions | One canned answer | Groq `gpt-oss-120b` with 5 read-only SQL tools; every number in the answer must come from a tool |
 | Read-back | Shown as text | Translated to your language, number-checked, spoken by Sarvam `bulbul:v3` |
 | Bill scan | Fixed sample values | Photo → Sarvam Document AI extract in the background (2 s polling, 90 s timeout, English retry) |
 | Data | In memory, gone on reload | Supabase Postgres with row-level security per shop, audit log on every change |
@@ -106,24 +110,35 @@ flowchart LR
 
 ## ✅ Status
 
+Checked on branch `goal/complete-khata` (see [REPORT.md](REPORT.md) for evidence and test counts).
+
 | Feature | State |
 |---|---|
 | Sign up, log in, create or join a shop (invite code), per-user language | ✅ Done |
-| Voice entry: hold to talk (30 s cap), save rules, spoken read-back, 5 s Undo | ✅ Done |
-| Ledger, add by hand, confirm / void, parties with balances, party detail | ✅ Done |
-| Bill scan: kind, Paid/Credit, photo, editable vendor/date/total, save | ✅ Done |
+| Voice entry: hold to talk (30 s cap, 0.7 s minimum), save rules, spoken read-back, 5 s Undo | ✅ Done |
+| "Did you mean X?" (YES / NO, NEW PERSON) and clarify questions answered by voice (answers joined with the first recording) | ✅ Done |
+| Voice questions ("How much does Ramesh owe?"), answered from SQL through read-only tools, spoken in your language | ✅ Done (numbers are checked against the tool results) |
+| Bill scan: kind, Paid/Credit, photo, background reading (2 s polling, 90 s), English retry, editable fields | ✅ Done |
+| Bill auto-fill | ✅ Verified live on a printed bill and a phone-style photo (3/3 fields). ⚠️ Real handwritten or faded bills not yet tested. |
+| Ledger, add by hand, confirm / void, parties with balances, party detail with the original recording / bill photo | ✅ Done |
+| Entry edit with history (who, when, old → new) | ✅ Done |
+| Review queue (pending entries, new people: rename / merge / keep, unreadable bills) | ✅ Done |
+| Weekly summary ("This week, so far."), cached 15 min, spoken on tap | ✅ Done |
+| Settings: language, voice (with a spoken sample), invite code, log out | ✅ Done |
+| Public landing page at `/` | ✅ Done (the optional "Built by" section appears when a photo is added) |
+| Offline screen, "Waking the server…", accessibility (axe, keyboard, 48 px targets), reduced motion | ✅ Done |
 | Demo mode (`/demo`) | ✅ Done |
-| Bill auto-fill from Sarvam | ✅ Background job (2 s polling, 90 s timeout), English retry, digitise + Groq fallback with a number guard. Verified live on a printed bill and a phone-style photo (3/3 fields). Real handwritten/faded bills not yet tested. |
-| Voice questions ("How much does Ramesh owe?"), weekly insights, review queue, settings, landing page | 🚧 Not built yet |
+| Migration `002_one_live_entry_per_receipt.sql` | ⚠️ Written, not yet applied to the database (see DEPLOY.md) |
 
 ## 🗂️ Repo layout
 
 ```
-frontend/        React + Vite app — screens in src/screens, demo backend in src/lib/demo.ts
-backend/         FastAPI — app/routers, app/services/{sarvam,llm_router}.py, tests/
+frontend/        React + Vite app — screens in src/screens, demo backend in src/lib/demo.ts, e2e/ (Playwright)
+backend/         FastAPI — app/routers, app/services/{sarvam,llm_router,receipt_ocr}.py, tests/
 schema.sql       Database schema (run once in Supabase)
 migrations/      SQL to run after schema.sql
-scripts/         seed_demo.py: fills a real shop with sample parties and entries
+scripts/         seed_demo.py (sample data), verify_db.sql (read-only DB checks)
+DEPLOY.md        Ordered deploy checklist  ·  DEMO.md  3-minute demo script
 docs/            Checked notes on the Sarvam and Groq APIs
 CLAUDE.md        Product and build spec  ·  DESIGN.md  Visual spec
 render.yaml      Render blueprint for the backend
@@ -134,7 +149,7 @@ render.yaml      Render blueprint for the backend
 <details>
 <summary><b>1. Database (Supabase)</b></summary>
 
-1. Run `schema.sql`, then each file in `migrations/`, in the Supabase SQL editor.
+1. Run `schema.sql`, then each file in `migrations/` in order (`001_…`, `002_…`), in the Supabase SQL editor. `scripts/verify_db.sql` checks the result.
 2. Under **Auth → Providers**, enable Email and turn **Confirm email** off.
 3. Under **Storage**, create two **private** buckets: `voice` and `receipts`.
 
@@ -152,8 +167,9 @@ cp .env.example .env            # fill in Supabase, Sarvam and Groq keys
 curl localhost:8000/health      # → {"ok":true}
 ```
 
-Tests: `.venv/bin/pytest -q`. Most tests use the live Supabase project in `.env`. They create
-throwaway users through the admin API and delete them afterwards.
+Tests: `.venv/bin/pytest -q` (about 300 tests, 10–15 minutes). Sarvam and Groq are always faked
+in tests; the database tests use the live Supabase project in `.env`, creating throwaway users
+through the admin API and deleting them (and their shops, audit rows and files) afterwards.
 
 </details>
 
@@ -166,6 +182,11 @@ npm install
 cp .env.example .env.local      # Supabase URL + publishable key, VITE_API_URL=http://localhost:8000
 npm run dev                     # → http://localhost:5173  (demo: http://localhost:5173/demo)
 ```
+
+Checks: `npm run build && npm run lint && npm run typecheck` (`typecheck` covers `src/` and the e2e tests;
+the root `tsconfig.json` only lists project references, so a bare `npx tsc --noEmit` there checks nothing).
+End-to-end tests (no backend needed; the API and Supabase Auth are mocked):
+`npx playwright install chromium` once, then `npm run test:e2e`.
 
 </details>
 
@@ -206,8 +227,8 @@ Adds 6 parties and 15 entries to that user's shop.
 
 ## ⚠️ Known limits
 
-- Render's free tier sleeps when idle, so the first real request after a pause is slow. Open the app a minute before a demo. Demo mode doesn't need the backend.
+- Render's free tier sleeps when idle, so the first real request after a pause is slow (the app says "Waking the server…"). Open the app a minute before a demo. Demo mode doesn't need the backend.
 - Audio and bill photos are kept forever as evidence, so Supabase free-tier storage will eventually fill up.
-- OCR accuracy on handwritten or faded thermal bills is untested.
+- OCR accuracy on handwritten or faded thermal bills is untested (printed bills: 3/3 fields in live checks).
 - The name-match thresholds (0.6 / 0.15 / 0.3) are starting guesses, not yet tuned on real names.
 - Out of scope: payment reminders, WhatsApp, offline mode, line items, inventory, GST.

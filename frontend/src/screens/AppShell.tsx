@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { Suspense, type ReactNode } from 'react'
 import { Outlet } from 'react-router'
 import { AppNav } from '../components/ui/AppNav'
 import { Header } from '../components/ui/Header'
@@ -22,7 +22,9 @@ export function AppShell() {
             <button type="button" onClick={exitDemo} className="min-h-12 t-label text-ink underline">{t.demo.exit}</button>
           </div>
         )}
-        <Outlet />
+        <Suspense fallback={null}>
+          <Outlet />
+        </Suspense>
       </main>
     </div>
   )

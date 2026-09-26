@@ -17,6 +17,7 @@ from pydantic import BaseModel, ConfigDict
 from ..auth import CurrentUser, current_user
 from ..db import user_client
 from ..errors import AppError
+from ..ratelimit import rate_limit
 from ..ledger import (check_uuid, now_ist, now_iso, parse_iso_date, require_membership, rupees_to_paise,
                       today_ist)
 from ..services import llm_router, receipt_ocr
@@ -81,7 +82,7 @@ def process_receipt(receipt_id: str, token: str, image: bytes, filename: str, mi
         log.exception("could not store OCR result")
 
 
-@router.post("/receipts", status_code=201)
+@router.post("/receipts", status_code=201, dependencies=[Depends(rate_limit("receipts"))])
 def create_receipt(background: BackgroundTasks, image: UploadFile = File(...),
                    kind: Literal["supplier", "customer", "expense"] = Form(...),
                    settled: bool | None = Form(None), user: CurrentUser = Depends(current_user)):
