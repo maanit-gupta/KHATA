@@ -1,0 +1,24 @@
+/* DESIGN.md §2 — the only colour and spacing tokens in the app. */
+:root {
+  --ink: #17181A;       /* text, buttons, dark sections */
+  --ink-soft: #2A2B2E;  /* ghost squares on dark */
+  --cyan: #B8F3FF;      /* signature accent surface */
+  --cyan-deep: #97EDFA; /* ripple stripes; PENDING status square */
+  --mist: #E8E9ED;      /* cool grey sections */
+  --paper: #FDFDFD;     /* cards, white sections, app background */
+  --bone: #F3F3F1;      /* header bar on inner pages / in-app */
+  --muted: #9A9CA3;     /* pre-reveal headings, secondary text ONLY (never amounts/names/dates/errors) */
+  --gutter: 28px;       /* 16px below 600px */
+  --ease: cubic-bezier(0.65, 0, 0.35, 1);
+
+  /* derived, from DESIGN.md §1/§5/§8 */
+  --hairline-dark: rgb(255 255 255 / 0.4); /* hairlines/underlines on dark */
+  --ink-hover: #2E2F33;                    /* nav chip hover */
+  --header-h: 56px;
+  --font: "DM Sans", "Noto Sans Tamil", "Noto Sans Devanagari", "Noto Sans Telugu",
+    "Noto Sans Kannada", "Noto Sans Malayalam", "Inter Tight", system-ui, sans-serif;
+}
+
+@media (max-width: 599px) {
+  :root { --gutter: 16px; }
+}

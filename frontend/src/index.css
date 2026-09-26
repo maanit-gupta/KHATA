@@ -1,0 +1,86 @@
+@import "tailwindcss";
+@import "./styles/tokens.css";
+
+/* Tokens exposed to Tailwind (bg-ink, text-paper, border-ink, …). Radius and shadows are
+   zeroed so utilities can't reintroduce them (DESIGN.md §1). */
+@theme inline {
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-cyan: var(--cyan);
+  --color-cyan-deep: var(--cyan-deep);
+  --color-mist: var(--mist);
+  --color-paper: var(--paper);
+  --color-bone: var(--bone);
+  --color-muted: var(--muted);
+  --font-sans: var(--font);
+  --ease-brand: var(--ease);
+  --breakpoint-app: 900px;
+  --radius-*: initial;
+  --shadow-*: initial;
+  --font-weight-*: initial;
+  --font-weight-normal: 400;
+}
+
+@layer base {
+  *, *::before, *::after {
+    border-radius: 0;
+    box-shadow: none;
+    font-weight: 400; /* nothing is bold, including h1–h6, b, strong, th */
+  }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font);
+    font-size: 15px;
+    line-height: 1.35;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3, h4, p { margin: 0; }
+  button, input, select, textarea { font: inherit; color: inherit; letter-spacing: inherit; }
+  input, select, textarea { appearance: none; background: transparent; border: 0; }
+  button { background: none; border: 0; padding: 0; cursor: pointer; }
+  a { color: inherit; text-decoration: none; }
+
+  /* Visible square focus ring: 2px ink, offset 2px. On dark panels ink is invisible, so white. */
+  :focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+  .on-dark :focus-visible { outline-color: var(--paper); }
+  :focus:not(:focus-visible) { outline: none; }
+}
+
+/* DESIGN.md §3 type scale */
+@layer components {
+  .t-display { font-size: clamp(56px, 10vw, 150px); line-height: 0.95; letter-spacing: -0.035em; }
+  .t-h2 { font-size: clamp(32px, 3.2vw, 48px); line-height: 1.05; letter-spacing: -0.02em; }
+  .t-h3 { font-size: clamp(24px, 2.6vw, 40px); line-height: 1.1; letter-spacing: -0.01em; }
+  .t-amount {
+    font-size: clamp(28px, 6vw, 40px); line-height: 1; letter-spacing: -0.01em;
+    font-variant-numeric: tabular-nums;
+  }
+  .t-body { font-size: 15px; line-height: 1.35; }
+  .t-body-lg { font-size: 18px; line-height: 1.35; }
+  /* Labels / nav / buttons. text-transform is a no-op on Indic scripts, as intended. */
+  .t-label { font-size: 13px; line-height: 1; letter-spacing: 0.02em; text-transform: uppercase; }
+  .t-label-lg { font-size: 15px; line-height: 1; letter-spacing: 0.02em; text-transform: uppercase; }
+  .t-field-label { font-size: 12px; line-height: 1.2; letter-spacing: 0.02em; text-transform: uppercase; }
+
+  .gutter-x { padding-left: var(--gutter); padding-right: var(--gutter); }
+  .hairline-t { border-top: 1px solid var(--ink); }
+  .on-dark .hairline-t { border-top-color: var(--hairline-dark); }
+}
+
+/* Countdown hairlines carry information, so they run under reduced motion too, always linear
+   (DESIGN.md §8). */
+@keyframes countdown-shrink { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+@keyframes countdown-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.countdown { transform-origin: left center; animation-timing-function: linear; animation-fill-mode: forwards; }
+
+/* Page transition: new content rises 20px as the --bone cover fades out (DESIGN.md §8). */
+@keyframes route-rise { from { transform: translateY(20px); } to { transform: translateY(0); } }
+.route-rise { animation: route-rise 400ms var(--ease) backwards; }
+
+@media (prefers-reduced-motion: reduce) {
+  .route-rise { animation: none; }
+  .motion-ui, .motion-ui * { transition-duration: 0s !important; }
+}

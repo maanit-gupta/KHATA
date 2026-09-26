@@ -1,0 +1,105 @@
+// Every user-facing UI string (CLAUDE.md §2, DESIGN.md §9). The UI ships in English this build;
+// another language is a new file with the same shape. Two-line headings are [line1, line2].
+
+export const en = {
+  brand: 'KHATA',
+  arrow: '→',
+
+  nav: {
+    ledger: 'Ledger',
+    parties: 'Parties',
+    review: 'Review',
+    settings: 'Settings',
+    menu: 'Menu',
+    close: 'Close',
+    main: 'Main',
+    reviewCount: (n: number) => `${n} to review`,
+  },
+
+  auth: {
+    heading: ["Your shop's khata,", 'by voice.'],
+    blurb: ["Speak an entry, scan a bill, ask what's owed.", 'Six Indian languages.'],
+    sideLabel: 'Six languages, one ledger.',
+    email: 'Email',
+    password: 'Password',
+    name: 'Your name',
+    logIn: 'Log in',
+    createAccount: 'Create account',
+    toSignup: 'New here? Create an account',
+    toLogin: 'Have an account? Log in',
+    working: 'Working…',
+    errors: {
+      required: 'This field is required.',
+      email: 'Enter an email address like name@example.com.',
+      passwordShort: 'Use at least 6 characters.',
+      badLogin: 'That email and password don’t match. Check both and try again.',
+      exists: 'An account with this email already exists. Log in instead.',
+      emailDisabled: 'Email login is turned off for this app. Ask the person who set it up.',
+      generic: 'Could not reach the server. Check your internet and try again.',
+    },
+  },
+
+  onboarding: {
+    heading: ['Set up', 'your shop.'],
+    languageHeading: ['Pick', 'your language.'],
+    step: (n: number) => `Step ${n} of 2`,
+    create: 'Create a shop',
+    join: 'Join with code',
+    shopName: 'Shop name',
+    code: '6-character invite code',
+    languageHelp: 'Spoken answers and read-backs use this language. You can change it in Settings.',
+    next: 'Next',
+    back: 'Back',
+    createShop: 'Create shop',
+    joinShop: 'Join shop',
+    errors: {
+      required: 'This field is required.',
+      codeLength: 'The code has 6 characters.',
+      pickLanguage: 'Pick a language to continue.',
+    },
+  },
+
+  languages: {
+    'ta-IN': 'தமிழ்',
+    'hi-IN': 'हिन्दी',
+    'en-IN': 'English',
+    'te-IN': 'తెలుగు',
+    'kn-IN': 'ಕನ್ನಡ',
+    'ml-IN': 'മലയാളം',
+  },
+
+  // Placeholder screens show only their H2 until their step is built.
+  screens: {
+    ledger: ['Your', 'ledger.'],
+    parties: ['Customers', 'and suppliers.'],
+    partyDetail: ['Party', 'detail.'],
+    review: ['Needs', 'a look.'],
+    entry: ['Edit', 'entry.'],
+    scan: ['What kind', 'of bill?'],
+    settings: ['Your', 'settings.'],
+    logOut: 'Log out',
+  },
+
+  status: {
+    confirmed: 'Confirmed',
+    pending: 'Pending',
+    voided: 'Voided',
+    auto: 'Auto',
+    new: 'New',
+  },
+
+  toast: {
+    undo: 'Undo',
+    undone: 'Undone.',
+  },
+
+  errors: {
+    loading: 'Loading…',
+    notFound: 'That page does not exist.',
+  },
+} as const
+
+export type Lang = keyof typeof en.languages
+export const LANG_ORDER: Lang[] = ['ta-IN', 'hi-IN', 'en-IN', 'te-IN', 'kn-IN', 'ml-IN']
+
+export const t = en
