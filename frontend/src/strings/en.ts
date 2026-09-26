@@ -112,6 +112,12 @@ export const en = {
     noParty: '—',
   },
 
+  demo: {
+    try: 'Try the demo, no account needed',
+    banner: 'Demo mode: sample shop, nothing is saved. Voice and bill reading are simulated.',
+    exit: 'Exit demo',
+  },
+
   scan: {
     supplier: 'Supplier',
     customer: 'Customer',

@@ -2,6 +2,7 @@ import type { Session } from '@supabase/supabase-js'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { api, type Me } from '../lib/api'
+import { DEMO_SESSION, isDemo } from '../lib/demo'
 import { supabase } from '../lib/supabase'
 
 /** undefined = still restoring the session from storage. */
@@ -11,6 +12,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null | undefined>(undefined)
   const qc = useQueryClient()
   useEffect(() => {
+    if (isDemo()) {
+      setSession(DEMO_SESSION)
+      return
+    }
     supabase.auth.getSession().then(({ data }) => setSession(data.session))
     const { data } = supabase.auth.onAuthStateChange((_event, s) => {
       setSession(s)
