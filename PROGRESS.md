@@ -45,6 +45,13 @@
 - [x] **P2.5 Flow.** Kind and Paid/Credit changeable on the form; saved entry + ANOTHER BILL; double submit blocked in the UI, the API and the DB.
 - AC: `e2e/scan.spec.ts` (14 tests: success, partial, fail, cancel, retake, dark/small, rotate, HEIC, PDF, drag-drop, kind change, 90 s type-it-in, double submit, phone camera) all pass; backend `test_receipts.py` +5 (PDF pages, stages, type-it-in with no late overwrite, kind change). Screenshots 390/1280: `artifacts/screens/P2-scan/`. **Live scan through the new UI** (local API + vite, live Sarvam, throwaway user, the synthetic phone-photo bill): read in 6.7 s, vendor/date/total all correct (₹2,464), saved; `artifacts/screens/P2-scan-live/`. No real paper bill exists (N-011).
 
+### P3 Ledger access
+- [x] **P3.1 Ledger table** at `/app/ledger`; nav chips HOME / LEDGER / PARTIES / REVIEW / SETTINGS. Columns date | party | type | amount | source | added by | status; 50 per page (server-side); presets Today / This week / This month / Custom (+ All); type, party, source, member, status filters (voided only when chosen); search over party names and notes; totals row (cash in, credit given, collected, expenses; confirmed only); rows open entry edit; horizontal scroll inside a focusable region on phones. `GET /ledger` over SQL `ledger_rows` / `ledger_totals` (D-059).
+- [x] **P3.2 Party statement** in party detail: date | description | +/− | balance after, from the `party_statement` view (window function); date range with opening balance; SHARE STATEMENT → `/app/report?party=…` (print view built in P7.3). `GET /parties/{id}/statement`.
+- [x] **P3.3 CSV export** `GET /ledger/export.csv` (same filters; rupees with 2 decimals; IST; UTF-8 BOM; `Amount (₹)`); logged in CLAUDE.md's API table.
+- [x] **P3.4 Quick manual add** (`components/ManualAdd.tsx`, on HOME and LEDGER): type chips, `inputmode="decimal"`, autocomplete from `GET /parties/suggest` (find_party, then prefix), date defaults to today (IST), Enter submits, stays open with "SAVED. ADD ANOTHER".
+- AC: `tests/test_ledger.py` (11: default view, voided only when asked, every filter, search, added-by names, bad filters, pagination 57 rows + totals over the whole set, CSV contents, statement running balance with a void and an edit = party_balances, supplier sign, suggest); isolation cases for all 4 new routes and all new SQL functions/views; `e2e/ledger-table.spec.ts` (6: desktop table + filters, phone scroll, pagination, CSV download, quick add, statement) and the table added to the a11y + keyboard walks. Screens: `artifacts/screens/P3-ledger/`.
+
 ---
 
 # Run 1 (GOAL.md) — archived

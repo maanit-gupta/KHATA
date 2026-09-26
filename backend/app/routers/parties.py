@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from postgrest.exceptions import APIError
 from pydantic import BaseModel, ConfigDict
 
@@ -10,7 +10,7 @@ from ..auth import CurrentUser, current_user
 from ..db import PG_UNIQUE_VIOLATION, user_client
 from ..errors import AppError
 from ..ledger import (ENTRY_SELECT, PARTY_KINDS, check_uuid, entry_out, expected_party_kind, not_found,
-                      require_membership)
+                      parse_iso_date, require_membership)
 
 router = APIRouter()
 
@@ -35,6 +35,61 @@ def list_parties(kind: str | None = None, q: str | None = None, user: CurrentUse
     if q and q.strip():
         query = query.ilike("display_name", f"%{q.strip()}%")
     return {"parties": query.execute().data}
+
+
+@router.get("/parties/suggest")
+def suggest(q: str = "", kind: str | None = None, user: CurrentUser = Depends(current_user)):
+    """Name autocomplete for manual add (GOAL_2.0 P3.4): find_party's fuzzy matches (the same
+    matcher voice entry uses) first, then names that simply start with what was typed."""
+    m = require_membership(user)
+    if kind is not None and kind not in PARTY_KINDS:
+        raise AppError(422, "bad_kind", "Kind must be customer or supplier.")
+    text = q.strip()
+    if not text:
+        return {"parties": []}
+    db = user_client(user.token)
+    fuzzy = db.rpc("find_party", {"p_shop": m["shop_id"], "p_query": text, "p_kind": kind, "p_limit": 6}).execute().data or []
+    query = (db.table("parties").select("id, display_name, kind").eq("shop_id", m["shop_id"])
+             .ilike("display_name", f"{text}%").order("display_name").limit(6))
+    if kind:
+        query = query.eq("kind", kind)
+    out, seen = [], set()
+    for r in [{"party_id": f["party_id"], "display_name": f["display_name"], "kind": f["kind"]} for f in fuzzy] + \
+             [{"party_id": r["id"], "display_name": r["display_name"], "kind": r["kind"]} for r in query.execute().data]:
+        if r["party_id"] not in seen:
+            seen.add(r["party_id"])
+            out.append(r)
+    return {"parties": out[:6]}
+
+
+@router.get("/parties/{party_id}/statement")
+def statement(party_id: str, date_from: str | None = Query(None, alias="from"), date_to: str | None = Query(None, alias="to"),
+              user: CurrentUser = Depends(current_user)):
+    """GOAL_2.0 P3.2: date | description | +/− | running balance, computed in SQL (party_statement:
+    a window over the party's confirmed entries). The opening balance is the running balance just
+    before `from`, so a date-filtered statement still adds up."""
+    m = require_membership(user)
+    db = user_client(user.token)
+    party = _balance_row(db, party_id)
+    f, t = parse_iso_date(date_from, "start date"), parse_iso_date(date_to, "end date")
+    if f and t and f > t:
+        raise AppError(422, "bad_range", "The start date is after the end date.")
+    q = db.table("party_statement").select("*").eq("shop_id", m["shop_id"]).eq("party_id", party_id)
+    if f:
+        q = q.gte("occurred_on", f)
+    if t:
+        q = q.lte("occurred_on", t)
+    rows = q.order("occurred_on").order("created_at").order("entry_id").execute().data
+    opening = 0
+    if f:
+        before = (db.table("party_statement").select("running_balance_paise").eq("shop_id", m["shop_id"])
+                  .eq("party_id", party_id).lt("occurred_on", f).order("occurred_on", desc=True)
+                  .order("created_at", desc=True).order("entry_id", desc=True).limit(1).execute().data)
+        opening = before[0]["running_balance_paise"] if before else 0
+    closing = rows[-1]["running_balance_paise"] if rows else opening
+    return {"party": party, "from": f, "to": t, "opening_balance_paise": opening, "closing_balance_paise": closing,
+            "rows": [{k: r[k] for k in ("entry_id", "occurred_on", "type", "amount_paise", "note", "source",
+                                        "delta_paise", "running_balance_paise")} for r in rows]}
 
 
 @router.get("/parties/{party_id}")

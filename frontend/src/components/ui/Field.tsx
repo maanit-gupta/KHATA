@@ -1,4 +1,4 @@
-import { useId, type InputHTMLAttributes } from 'react'
+import { useId, type InputHTMLAttributes, type Ref } from 'react'
 
 type Props = InputHTMLAttributes<HTMLInputElement> & {
   label: string
@@ -7,6 +7,7 @@ type Props = InputHTMLAttributes<HTMLInputElement> & {
   /** Helper line under the field. tone "check" marks it with the pending square (look at this). */
   hint?: string | null
   hintTone?: 'info' | 'check'
+  ref?: Ref<HTMLInputElement>
 }
 
 /**

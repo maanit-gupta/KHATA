@@ -44,10 +44,12 @@ def _already_in_shop() -> AppError:
     return AppError(409, "already_in_shop", "You already belong to a shop. One account can join only one shop.")
 
 
-def _add_member(shop_id: str, user_id: str, role: str, lang: str) -> dict:
+def _add_member(shop_id: str, user: CurrentUser, role: str, lang: str) -> dict:
+    """The member row, with their sign-up name so everyone in the shop sees who did what (P4.1)."""
     try:
         return (admin_client().table("shop_members")
-                .insert({"shop_id": shop_id, "user_id": user_id, "role": role, "lang": lang})
+                .insert({"shop_id": shop_id, "user_id": user.id, "role": role, "lang": lang,
+                         "display_name": (user.name or "").strip()[:60] or None})
                 .execute().data[0])
     except APIError as e:
         if e.code == PG_UNIQUE_VIOLATION:  # one_shop_per_user: lost a race with another request
@@ -78,7 +80,7 @@ def create_shop(body: CreateShop, user: CurrentUser = Depends(current_user)):
             if e.code != PG_UNIQUE_VIOLATION or attempt == INVITE_CODE_RETRIES - 1:
                 raise
     try:
-        member = _add_member(shop["id"], user.id, "owner", body.lang)
+        member = _add_member(shop["id"], user, "owner", body.lang)
     except Exception:
         admin.table("shops").delete().eq("id", shop["id"]).execute()  # don't leave an orphan shop
         raise
@@ -95,5 +97,5 @@ def join_shop(body: JoinShop, user: CurrentUser = Depends(current_user)):
     if not rows:
         raise AppError(404, "bad_invite_code", "That invite code doesn't match any shop. Check it with the shop owner.")
     shop = rows[0]
-    member = _add_member(shop["id"], user.id, "staff", body.lang)
+    member = _add_member(shop["id"], user, "staff", body.lang)
     return {"shop": _shop_out(shop), "membership": _membership_out(member)}

@@ -16,7 +16,7 @@ function shop() {
 
 const SCREENS: [string, string, boolean][] = [
   ['landing', '/', false], ['login', '/login', false], ['signup', '/signup', false],
-  ['ledger', '/app', true], ['parties', '/app/parties', true], ['party', '/app/parties/p-1', true],
+  ['home', '/app', true], ['ledger-table', '/app/ledger', true], ['parties', '/app/parties', true], ['party', '/app/parties/p-1', true],
   ['review', '/app/review', true], ['entry', '/app/entries/e-4', true], ['scan', '/app/scan', true],
   ['settings', '/app/settings', true], ['about', '/about', false],
 ]
@@ -120,7 +120,7 @@ test('keyboard only: the MENU overlay opens, traps Escape, and navigates', async
   await page.keyboard.press('Enter')
   const menu = page.getByRole('dialog', { name: 'Main' })
   await expect(menu).toBeVisible()
-  await expect(menu.getByRole('link', { name: 'Ledger' })).toBeFocused()
+  await expect(menu.getByRole('link', { name: 'Home' })).toBeFocused()   // first link (GOAL_2.0 P3.1: HOME, then LEDGER)
   await page.keyboard.press('Escape')
   await expect(menu).toHaveCount(0)
   await page.getByRole('button', { name: 'Menu' }).click()
@@ -142,7 +142,8 @@ for (const [name, path, signedIn] of SCREENS) {
         return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== 'hidden' && !el.closest('[aria-hidden=true]')
       }).length)
     const reached = new Set<string>()
-    for (let i = 0; i < controls + 5; i++) {
+    // Native date inputs take one Tab per segment (day / month / year), so allow several per control.
+    for (let i = 0; i < controls * 3 + 10; i++) {
       await page.keyboard.press('Tab')
       const info = await page.evaluate(() => {
         const el = document.activeElement as HTMLElement | null

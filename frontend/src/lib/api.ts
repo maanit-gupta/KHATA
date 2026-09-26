@@ -37,6 +37,26 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   return body as T
 }
 
+/** A file from the API (CSV export): the bytes and the server's filename. Same auth and errors. */
+export async function apiBlob(path: string): Promise<{ blob: Blob; filename: string | null }> {
+  const { data } = await supabase.auth.getSession()
+  const headers = new Headers()
+  if (data.session) headers.set('Authorization', `Bearer ${data.session.access_token}`)
+  let resp: Response
+  try {
+    resp = await fetch(`${API_URL}${path}`, { headers, cache: 'no-store' })
+  } catch {
+    setOffline(true)
+    throw new ApiError(0, 'offline', t.offline.network)
+  }
+  if (!resp.ok) {
+    const body = await resp.json().catch(() => null)
+    throw new ApiError(resp.status, body?.error?.code ?? 'http_error', body?.error?.message ?? t.auth.errors.generic)
+  }
+  const filename = /filename="([^"]+)"/.exec(resp.headers.get('Content-Disposition') ?? '')?.[1] ?? null
+  return { blob: await resp.blob(), filename }
+}
+
 export type Membership = { shop_id: string; role: 'owner' | 'staff'; lang: string; tts_voice: string | null; joined_at: string }
 export type Shop = { id: string; name: string; default_lang: string; invite_code: string; created_at: string }
 export type Me = { user: { id: string; email: string | null; name: string | null }; membership: Membership | null; shop: Shop | null }

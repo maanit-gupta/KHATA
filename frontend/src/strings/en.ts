@@ -6,6 +6,7 @@ export const en = {
   arrow: '→',
 
   nav: {
+    home: 'Home',
     ledger: 'Ledger',
     parties: 'Parties',
     scan: 'Scan',
@@ -117,6 +118,46 @@ export const en = {
     heardNothing: 'Nothing. The recording was silent.',
     play: 'Play',
     noParty: '—',
+  },
+
+  // GOAL_2.0 P3.1: the whole book as a table.
+  table: {
+    heading: ['The whole', 'book.'],
+    presets: { all: 'All', today: 'Today', week: 'This week', month: 'This month', custom: 'Custom' },
+    period: 'Period',
+    from: 'From',
+    to: 'To',
+    type: 'Type',
+    allTypes: 'All types',
+    party: 'Party',
+    allParties: 'Everyone',
+    source: 'Source',
+    allSources: 'Any source',
+    member: 'Added by',
+    allMembers: 'Anyone',
+    show: 'Show',
+    search: 'Search names and notes',
+    cols: { date: 'Date', party: 'Party', type: 'Type', amount: 'Amount', source: 'Source', addedBy: 'Added by', status: 'Status' },
+    sources: { voice: 'Voice', receipt: 'Bill', manual: 'Typed' } as Record<string, string>,
+    totals: { cashIn: 'Cash in', credit: 'Credit given', collected: 'Collected', expenses: 'Expenses',
+      note: 'Totals count confirmed entries only.' },
+    count: (n: number) => (n === 1 ? '1 entry' : `${n} entries`),
+    page: (p: number, n: number) => `Page ${p} of ${n}`,
+    prev: 'Previous',
+    next: 'Next',
+    export: 'Download CSV',
+    exporting: 'Preparing…',
+    empty: 'No entries match these filters. Clear them, or add one by hand.',
+    clear: 'Clear filters',
+    caption: 'Ledger entries, newest first',
+    open: (what: string) => `Open ${what}`,
+  },
+
+  // GOAL_2.0 P3.4: quick manual add.
+  manual: {
+    date: 'Date',
+    matches: 'Matching names',
+    savedAddAnother: 'Saved. Add another.',
   },
 
   mic: {
@@ -334,6 +375,19 @@ export const en = {
     noEntries: 'No entries yet.',
     customer: 'Customer',
     supplier: 'Supplier',
+    statement: {
+      title: 'Statement',
+      from: 'From',
+      to: 'To',
+      cols: { date: 'Date', description: 'Description', change: '+ / −', balance: 'Balance after' },
+      opening: 'Opening balance',
+      closing: 'Closing balance',
+      share: 'Share statement',
+      empty: 'No confirmed entries in these dates.',
+      caption: (name: string) => `Statement for ${name}, oldest first`,
+      help: '+ means they owe the shop more; − means less. Confirmed entries only.',
+    },
+    entriesTitle: 'Entries',
   },
 
   week: {

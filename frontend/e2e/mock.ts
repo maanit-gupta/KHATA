@@ -14,7 +14,7 @@ export type Entry = {
   id: string; shop_id: string; type: string; amount_paise: number; status: 'pending' | 'confirmed' | 'voided'
   party_id: string | null; party_name: string | null; party_kind: Kind | null; note: string | null
   occurred_on: string; auto_saved: boolean; review_reason: string | null; source: 'voice' | 'receipt' | 'manual'
-  created_at: string; receipt_id: string | null; voice_note_id: string | null
+  created_at: string; receipt_id: string | null; voice_note_id: string | null; created_by?: string
 }
 type Party = { id: string; display_name: string; kind: Kind; needs_review: boolean }
 type Receipt = {
@@ -72,7 +72,7 @@ export class MockApi {
     const row: Entry = {
       id: this.id('e'), shop_id: this.shop.id, status: 'confirmed', party_id: null, note: null, occurred_on: today(),
       auto_saved: false, review_reason: null, source: 'manual', created_at: new Date(Date.now() + this.seq).toISOString(),
-      receipt_id: null, voice_note_id: null, ...e, party_name: p?.display_name ?? null, party_kind: p?.kind ?? null,
+      receipt_id: null, voice_note_id: null, created_by: USER.id, ...e, party_name: p?.display_name ?? null, party_kind: p?.kind ?? null,
     }
     this.entries.push(row)
     this.history[row.id] = [{ action: 'create', at: new Date().toISOString(), by: 'you',
@@ -256,6 +256,47 @@ export class MockApi {
       }
     }
 
+    // ledger table (GOAL_2.0 P3)
+    if (path === '/ledger' || path === '/ledger/export.csv') {
+      const rows = this.ledgerRows(url.searchParams)
+      if (path === '/ledger/export.csv') {
+        const csv = ['Date,Party,Type,Amount (₹),Source,Added by,Status,Note,Recorded at (IST)',
+          ...rows.map((e) => [e.occurred_on, e.party_name ?? '', e.type, (e.amount_paise / 100).toFixed(2), e.source,
+            this.memberName(e.created_by), e.status, e.note ?? '', e.created_at.slice(0, 16).replace('T', ' ')].join(','))].join('\n')
+        return route.fulfill({ status: 200, contentType: 'text/csv; charset=utf-8', body: '\ufeff' + csv,
+          headers: { 'Content-Disposition': 'attachment; filename="khata-ledger-test.csv"', 'Access-Control-Expose-Headers': 'Content-Disposition' } })
+      }
+      const size = 50
+      const page = Math.max(1, Number(url.searchParams.get('page') ?? 1))
+      const conf = rows.filter((e) => e.status === 'confirmed')
+      const sum = (t: string) => conf.filter((e) => e.type === t).reduce((a, e) => a + e.amount_paise, 0)
+      return ok({ rows: rows.slice((page - 1) * size, page * size).map((e) => ({ ...e, added_by: this.memberName(e.created_by), confirmed_by_name: null })),
+        page, page_size: size, total_count: rows.length, pages: Math.max(1, Math.ceil(rows.length / size)),
+        totals: { cash_in_paise: sum('cash_sale'), credit_given_paise: sum('credit_given'), collected_paise: sum('payment_received'), expenses_paise: sum('expense') },
+        members: this.members.map((mm) => ({ user_id: mm.user_id, name: this.memberName(mm.user_id) })) })
+    }
+    if (path === '/parties/suggest') {
+      const q = (url.searchParams.get('q') ?? '').toLowerCase()
+      const kind = url.searchParams.get('kind')
+      const hits = this.parties.filter((pp) => (!kind || pp.kind === kind) && q && pp.display_name.toLowerCase().includes(q))
+      return ok({ parties: hits.slice(0, 6).map((pp) => ({ party_id: pp.id, display_name: pp.display_name, kind: pp.kind })) })
+    }
+    if (seg[0] === 'parties' && seg[2] === 'statement') {
+      const pp = this.parties.find((x) => x.id === seg[1])
+      if (!pp) return this.err(route, 404, 'not_found', 'That party does not exist.')
+      const from = url.searchParams.get('from'); const to = url.searchParams.get('to')
+      let run = 0
+      const all = this.entries.filter((e) => e.party_id === pp.id && e.status === 'confirmed')
+        .sort((a, b) => a.occurred_on.localeCompare(b.occurred_on) || a.created_at.localeCompare(b.created_at))
+        .map((e) => { const d = (SIGN[e.type] ?? 0) * e.amount_paise; run += d
+          return { entry_id: e.id, occurred_on: e.occurred_on, type: e.type, amount_paise: e.amount_paise, note: e.note, source: e.source, delta_paise: d, running_balance_paise: run } })
+      const before = all.filter((r) => from && r.occurred_on < from)
+      const rows = all.filter((r) => (!from || r.occurred_on >= from) && (!to || r.occurred_on <= to))
+      const opening = before.length ? before[before.length - 1].running_balance_paise : 0
+      return ok({ party: this.partyRow(pp), from, to, opening_balance_paise: opening,
+        closing_balance_paise: rows.length ? rows[rows.length - 1].running_balance_paise : opening, rows })
+    }
+
     // parties
     if (path === '/parties' && method === 'GET') {
       return ok({ parties: this.parties.map((p) => this.partyRow(p)).sort((a, b) => a.display_name.localeCompare(b.display_name)) })
@@ -338,6 +379,27 @@ export class MockApi {
   }
 
   nextReceipt: Partial<Receipt> | null = null
+  members = [{ user_id: USER.id, display_name: 'Asha', role: 'owner', joined_at: '2026-09-01T00:00:00Z' }]
+
+  memberName(id: string | undefined | null) {
+    const mm = this.members.find((x) => x.user_id === id)
+    if (!mm) return 'Member'
+    return id === USER.id ? `${mm.display_name} (you)` : mm.display_name
+  }
+
+  /** GET /ledger filtering, as the SQL does it: voided only when asked, newest first. */
+  ledgerRows(q: URLSearchParams) {
+    const list = (k: string) => (q.get(k) ?? '').split(',').filter(Boolean)
+    const types = list('type'); const sources = list('source'); const statuses = list('status')
+    const text = (q.get('q') ?? '').toLowerCase()
+    return this.entries.map((e) => this.out(e)).filter((e) =>
+      (!q.get('from') || e.occurred_on >= q.get('from')!) && (!q.get('to') || e.occurred_on <= q.get('to')!) &&
+      (!types.length || types.includes(e.type)) && (!sources.length || sources.includes(e.source)) &&
+      (!q.get('party') || e.party_id === q.get('party')) && (!q.get('member') || e.created_by === q.get('member')) &&
+      (statuses.length ? statuses.includes(e.status) : e.status !== 'voided') &&
+      (!text || (e.note ?? '').toLowerCase().includes(text) || (e.party_name ?? '').toLowerCase().includes(text)))
+      .sort((a, b) => b.occurred_on.localeCompare(a.occurred_on) || b.created_at.localeCompare(a.created_at))
+  }
   /** Keep every bill 'reading' forever (cancel / 90 s timeout paths). */
   receiptStall = false
 

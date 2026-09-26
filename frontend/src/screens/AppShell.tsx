@@ -27,7 +27,7 @@ export function Screen({ title, children }: { title: readonly string[]; children
   return (
     <div className="grid gap-8 gutter-x py-10 app:grid-cols-3 app:py-16">
       <H2 lines={title} as="h1" />
-      {children && <div className="app:col-span-2">{children}</div>}
+      {children && <div className="min-w-0 app:col-span-2">{children}</div>}
     </div>
   )
 }

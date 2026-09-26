@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { EntryList } from '../components/EntryList'
+import { PartyStatement } from '../components/PartyStatement'
 import { ButtonLink } from '../components/ui/Button'
 import { SegmentChip } from '../components/ui/Chip'
 import { Field } from '../components/ui/Field'
@@ -87,11 +88,15 @@ export function PartyDetailScreen() {
           <H2 lines={t.screens.partyDetail} as="h1" />
         )}
       </div>
-      <div className="flex flex-col gap-8 app:col-span-2">
+      <div className="flex min-w-0 flex-col gap-8 app:col-span-2">
         {q.error && <p className="t-body-lg" role="alert">{q.error.message}</p>}
         {evidenceError && <p className="t-body-lg" role="alert">{evidenceError}</p>}
-        <EntryList entries={q.data?.entries} revealKey={`party-${id}`} aside={evidence}
-          empty={<p className="t-body-lg">{t.parties.noEntries}</p>} />
+        <section className="flex flex-col gap-4" aria-labelledby="entries-title">
+          <h2 id="entries-title" className="t-h3">{t.parties.entriesTitle}</h2>
+          <EntryList entries={q.data?.entries} revealKey={`party-${id}`} aside={evidence}
+            empty={<p className="t-body-lg">{t.parties.noEntries}</p>} />
+        </section>
+        {p && <PartyStatement partyId={id} name={p.display_name} />}
         <ButtonLink to="/app/parties" variant="outline">{t.parties.back}</ButtonLink>
       </div>
     </div>
