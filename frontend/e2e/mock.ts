@@ -160,7 +160,14 @@ export class MockApi {
     let body: Record<string, unknown> = {}
     const ct = req.headers()['content-type'] ?? ''
     if (req.postData() && ct.includes('application/json')) body = req.postDataJSON()
-    this.calls.push({ method, path: path + url.search, body: ct.includes('multipart') ? '[multipart]' : body })
+    if (ct.includes('multipart')) {
+      // Text fields only (the audio/image part is binary): {answer_to, kind, settled, _file: mime}.
+      const raw = req.postDataBuffer()?.toString('latin1') ?? ''
+      for (const m of raw.matchAll(/name="(\w+)"\r\n\r\n([^\r]*)\r\n/g)) body[m[1]] = m[2]
+      const file = /name="(?:audio|image)"; filename="([^"]+)"\r\nContent-Type: ([^\r]+)/.exec(raw)
+      if (file) body._file = `${file[1]} ${file[2]}`
+    }
+    this.calls.push({ method, path: path + url.search, body })
     if (this.offline) return route.abort('internetdisconnected')
     const wait = this.delayMs[`${method} ${seg[0]}`]
     if (wait) await new Promise((r) => setTimeout(r, wait))

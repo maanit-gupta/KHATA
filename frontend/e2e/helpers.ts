@@ -16,7 +16,13 @@ export async function shots(page: Page, task: string, name: string) {
   const original = page.viewportSize()
   for (const width of [390, 1280]) {
     await page.setViewportSize({ width, height: width === 390 ? 844 : 900 })
-    await page.waitForTimeout(350) // let the page transition cover and row draws settle
+    await page.waitForTimeout(350) // page transition cover
+    // Row line-draws and reveals run once; wait for every finite animation to end (the ribbed
+    // glass ripple is infinite and keeps running).
+    await page.evaluate(() => Promise.all(document.getAnimations()
+      .filter((a) => a.effect?.getComputedTiming().endTime !== Infinity)
+      .map((a) => a.finished.catch(() => undefined))))
+    await page.waitForTimeout(1200) // framer-motion JS-driven draws
     await page.screenshot({ path: `${SCREENS_DIR}${task}/${name}-${width}.png`, fullPage: true })
   }
   if (original) await page.setViewportSize(original)

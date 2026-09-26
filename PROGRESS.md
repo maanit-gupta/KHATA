@@ -46,3 +46,9 @@
 - [x] **P5.3 Settings.** Language (PATCH /me), voice picker (varun hidden; selecting PATCHes then plays "Ramesh owes you 250 rupees." via POST /tts, localized server-side, D-006/D-027), invite code with COPY chip (all members), LOG OUT. E2E: `e2e/settings.spec.ts`. Screens: `artifacts/screens/P5.3-settings/`.
 - [x] **P5.4 Party detail evidence.** ▶ plays the original audio via GET /media/voice/{id} (signed 10 min); → opens the bill photo via GET /media/receipts/{id}; balance always "OWES YOU ₹X" / "YOU OWE ₹X" in Amount style. E2E: `e2e/party.spec.ts` (2). Screens: `artifacts/screens/P5.4-party/`.
 - E2E result: 10 passed (`npx playwright test e2e/review.spec.ts e2e/entry.spec.ts e2e/settings.spec.ts e2e/party.spec.ts`).
+
+### P6 Weekly insights
+- [x] `GET /insights/weekly` (`app/routers/insights.py`): Mon–Sun IST week, "so far" up to today, vs all of last week (D-029); SQL metrics from `daily_summary` + top 3 debtors from `party_balances`; cache in `weekly_insights`, recomputed after 15 min; rupees to `narrate_insights`; narration number-guarded with a template fallback (D-031); localized per language and cached (D-030).
+- [x] Frontend `WeeklyCard`: mist block, "This week, / so far.", 4 figure rows with last week, narration + ▶ (POST /tts, D-032), top debtors as Rows.
+- AC: `tests/test_insights.py` (6): hand-computed fixture on Thu 1 Oct 2026 (a week spanning Sep→Oct) excluding voided, pending, future and two-weeks-old entries; invented-number narration → template; cache reuse/expiry and a second language; **empty week** (no Groq call); Groq down → template. Isolation case added (`GET /insights/weekly`). E2E `e2e/ledger.spec.ts` renders and plays it. Screens: `artifacts/screens/P6-insights/`.
+- E2E totals now: 20 passed (`npx playwright test`).

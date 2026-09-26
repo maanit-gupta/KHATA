@@ -201,6 +201,15 @@ def c_voice_ask(client, w, fake_sarvam, fake_groq):
     assert "Mahesh" not in seen[2] and '"entries": []' in seen[3]
 
 
+def c_insights(client, w, fake_groq):
+    fake_groq.script(fake_groq.text("No numbers here."))
+    body = client.get("/insights/weekly", headers=w.a["headers"]).json()
+    _no_b(w, body)
+    # B's credit (₹200 this week) never reaches A's figures; A's own entries are ₹10 (+ voice ₹20).
+    assert body["this_week"]["credit_given_paise"] in (1000, 3000)
+    assert all(d["party_id"] not in (w.b_party,) for d in body["top_debtors"])
+
+
 def c_get_receipt(client, w):
     _is_404(client.get(f"/receipts/{w.b_receipt['id']}", headers=w.a["headers"]))
 
@@ -249,6 +258,7 @@ CASES = {
     ("GET", "/receipts/{receipt_id}"): c_get_receipt,
     ("POST", "/receipts/{receipt_id}/save"): c_save_receipt,
     ("GET", "/review"): c_review,
+    ("GET", "/insights/weekly"): c_insights,
     ("GET", "/media/{bucket}/{item_id}"): c_media,
     ("POST", "/tts"): c_tts,
 }
