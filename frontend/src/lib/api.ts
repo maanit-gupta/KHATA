@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import { t } from '../strings/en'
+import { t } from '../strings'
 import { setOffline } from './connectivity'
 
 const API_URL = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
@@ -57,7 +57,9 @@ export async function apiBlob(path: string): Promise<{ blob: Blob; filename: str
   return { blob: await resp.blob(), filename }
 }
 
-export type Membership = { shop_id: string; role: 'owner' | 'staff'; lang: string; tts_voice: string | null; joined_at: string }
+export type Membership = { shop_id: string; user_id?: string; role: 'owner' | 'staff'; lang: string; tts_voice: string | null; joined_at: string
+  /** GOAL_2.0 P4.1 / P5 / P1.6: the member's name and per-aspect languages (null = same as lang). */
+  display_name?: string | null; ui_lang?: string | null; voice_lang?: string | null; report_lang?: string | null; speech_auto?: boolean | null }
 export type Shop = { id: string; name: string; default_lang: string; invite_code: string; created_at: string }
 export type Me = { user: { id: string; email: string | null; name: string | null }; membership: Membership | null; shop: Shop | null }
 

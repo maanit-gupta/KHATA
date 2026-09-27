@@ -2,7 +2,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ping } from '../lib/api'
 import { setOffline, useOffline } from '../lib/connectivity'
-import { t } from '../strings/en'
+import { t } from '../strings'
 import { Button } from './ui/Button'
 import { H2 } from './ui/H2'
 

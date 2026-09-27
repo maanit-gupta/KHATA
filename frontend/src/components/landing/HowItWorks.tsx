@@ -1,4 +1,4 @@
-import { t } from '../../strings/en'
+import { t } from '../../strings'
 import { RibbedGlass } from '../ui/RibbedGlass'
 import { RevealHeading, Rise } from './reveal'
 import { useSectionReveal } from '../../hooks/useSectionReveal'

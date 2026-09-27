@@ -8,7 +8,7 @@ import { Toast } from '../components/ui/Toast'
 import { balanceText, confirmEntry, reasonText, useLedgerMutation, useParties, type Entry, type Party } from '../lib/ledger'
 import { formatPaise } from '../lib/money'
 import { keepParty, mergeParty, renameParty, useReview, type ReviewRow } from '../lib/review'
-import { t } from '../strings/en'
+import { t } from '../strings'
 import { Screen } from './AppShell'
 
 /** DESIGN.md §6.10: pending entries, auto-created parties, failed bills — three hairline groups. */

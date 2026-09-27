@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { Button } from './ui/Button'
 import { H2 } from './ui/H2'
-import { t } from '../strings/en'
+import { t } from '../strings'
 
 /** CLAUDE.md §8: microphone permission denied → an instruction screen, not a one-line error. */
 export function MicBlocked({ onRetry, onClose }: { onRetry: () => void; onClose: () => void }) {

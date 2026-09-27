@@ -4,7 +4,7 @@
  * responses, rupees in requests, {error:{code,message}} errors, balances from confirmed entries.
  * Voice, question and OCR results are queued by each test (the real services are never called).
  */
-import type { Page, Route } from '@playwright/test'
+import type { Page, Route, WebSocketRoute } from '@playwright/test'
 
 export const API = 'http://api.test'
 export const SB = 'http://sb.test'
@@ -23,12 +23,57 @@ type Receipt = {
   ocr_text?: string | null; total_check?: 'ok' | 'check' | null
   stage?: string | null; file_type?: string; created_at?: string
 }
-type History = { action: string; at: string; by: 'you' | 'another_member'; changes: { field: string; old: unknown; new: unknown }[] }
+type History = { action: string; at: string; actor: string; seq?: number; changes: { field: string; old: unknown; new: unknown }[] }
 
 const CUSTOMER = new Set(['credit_given', 'payment_received'])
 const SUPPLIER = new Set(['purchase_credit', 'purchase_paid', 'payment_made'])
 const SIGN: Record<string, number> = { credit_given: 1, payment_received: -1, purchase_credit: -1, payment_made: 1 }
 const USER = { id: 'user-1', email: 'asha@example.com', user_metadata: { name: 'Asha' } }
+export type MockUser = typeof USER
+export const ASHA: MockUser = USER
+export const PRIYA: MockUser = { id: 'user-2', email: 'priya@example.com', user_metadata: { name: 'Priya' } }
+
+/**
+ * A stand-in for Supabase Realtime (GOAL_2.0 P4.2), wired in with Playwright's WebSocket routing.
+ * It speaks realtime-js's wire format ([join_ref, ref, topic, event, payload]): answers phx_join with
+ * ids for each postgres_changes binding, and pushes a change only to bindings whose filter names the
+ * row's shop (the routing the real server does). Share one hub between MockApi instances to put
+ * several shops on the same "server".
+ */
+export class RealtimeHub {
+  subs: { ws: WebSocketRoute; topic: string; user: string; pcs: { id: number; event: string; schema: string; table: string; filter?: string }[] }[] = []
+  delivered: Record<string, number> = {}
+  private next = 1
+
+  attach(ws: WebSocketRoute, user: string) {
+    ws.onMessage((raw) => {
+      const [joinRef, ref, topic, event, payload] = JSON.parse(String(raw))
+      const reply = (response: unknown) => ws.send(JSON.stringify([joinRef, ref, topic, 'phx_reply', { status: 'ok', response }]))
+      if (event === 'phx_join') {
+        const pcs = (payload?.config?.postgres_changes ?? []).map((f: { event: string; schema: string; table: string; filter?: string }) => ({ ...f, id: this.next++ }))
+        this.subs.push({ ws, topic, user, pcs })
+        reply({ postgres_changes: pcs })
+      } else {
+        if (event === 'phx_leave') this.subs = this.subs.filter((x) => !(x.ws === ws && x.topic === topic))
+        reply({})
+      }
+    })
+    ws.onClose(() => { this.subs = this.subs.filter((x) => x.ws !== ws) })
+  }
+
+  publish(table: string, type: 'INSERT' | 'UPDATE', record: Record<string, unknown>) {
+    const columns = Object.entries(record).map(([name, v]) => ({ name, type: typeof v === 'number' ? 'int8' : typeof v === 'boolean' ? 'bool' : 'text' }))
+    for (const sub of this.subs) {
+      for (const pc of sub.pcs) {
+        if (pc.table !== table || (pc.event !== '*' && pc.event !== type)) continue
+        if (pc.filter && pc.filter !== `shop_id=eq.${record.shop_id}`) continue
+        this.delivered[sub.user] = (this.delivered[sub.user] ?? 0) + 1
+        sub.ws.send(JSON.stringify([null, null, sub.topic, 'postgres_changes', { ids: [pc.id], data: {
+          type, table, schema: 'public', record, old_record: {}, columns, commit_timestamp: new Date().toISOString(), errors: null } }]))
+      }
+    }
+  }
+}
 
 export function today(offsetDays = 0) {
   const d = new Date(Date.now() + 5.5 * 3600_000 - offsetDays * 86_400_000)
@@ -40,6 +85,10 @@ export class MockApi {
   hasShop = true
   lang = 'hi-IN'
   voice: string | null = null
+  /** GOAL_2.0 P5: per-aspect languages (null = same as lang). The on-screen text defaults to English
+   * here so every other spec reads the English strings. */
+  langs: { ui_lang: string | null; voice_lang: string | null; report_lang: string | null; speech_auto: boolean | null } =
+    { ui_lang: 'en-IN', voice_lang: null, report_lang: null, speech_auto: null }
   shop = { id: 'shop-1', name: 'Sharma Kirana', default_lang: 'hi-IN', invite_code: 'K7Q2ZP', created_at: '2026-09-01T00:00:00Z' }
   parties: Party[] = []
   entries: Entry[] = []
@@ -51,7 +100,14 @@ export class MockApi {
   offline = false
   delayMs: Record<string, number> = {}
   failNext: Record<string, { status: number; error: { code: string; message: string } }> = {}
-  calls: { method: string; path: string; body: unknown }[] = []
+  calls: { method: string; path: string; body: unknown; actor?: string }[] = []
+  hub = new RealtimeHub()
+  historySeq = 0
+  /** The member making the current request (from the e2e token). */
+  actor = USER.id
+  users: MockUser[] = [USER, PRIYA]
+
+  userById(id: string) { return this.users.find((u) => u.id === id) ?? USER }
   /** Raw bytes of every uploaded audio/image part, in order (GOAL_2.0 P1.2a). */
   uploads: { path: string; bytes: Buffer; mime: string }[] = []
   insights: unknown = null
@@ -72,10 +128,11 @@ export class MockApi {
     const row: Entry = {
       id: this.id('e'), shop_id: this.shop.id, status: 'confirmed', party_id: null, note: null, occurred_on: today(),
       auto_saved: false, review_reason: null, source: 'manual', created_at: new Date(Date.now() + this.seq).toISOString(),
-      receipt_id: null, voice_note_id: null, created_by: USER.id, ...e, party_name: p?.display_name ?? null, party_kind: p?.kind ?? null,
+      receipt_id: null, voice_note_id: null, created_by: this.actor, ...e, party_name: p?.display_name ?? null, party_kind: p?.kind ?? null,
     }
     this.entries.push(row)
-    this.history[row.id] = [{ action: 'create', at: new Date().toISOString(), by: 'you',
+    this.hub.publish('entries', 'INSERT', this.record(row))
+    this.history[row.id] = [{ action: 'create', at: new Date().toISOString(), seq: ++this.historySeq, actor: row.created_by ?? this.actor,
       changes: [{ field: 'amount_paise', old: null, new: row.amount_paise }, { field: 'type', old: null, new: row.type }] }]
     return row
   }
@@ -109,8 +166,10 @@ export class MockApi {
   }
 
   me() {
-    return { user: { id: USER.id, email: USER.email, name: 'Asha' },
-      membership: this.hasShop ? { shop_id: this.shop.id, role: 'owner', lang: this.lang, tts_voice: this.voice, joined_at: '2026-09-01T00:00:00Z' } : null,
+    const u = this.userById(this.actor)
+    return { user: { id: u.id, email: u.email, name: u.user_metadata.name },
+      membership: this.hasShop ? { shop_id: this.shop.id, user_id: u.id, role: u.id === USER.id ? 'owner' : 'staff', lang: this.lang, tts_voice: this.voice, ...this.langs,
+        joined_at: '2026-09-01T00:00:00Z', display_name: this.members.find((x) => x.user_id === u.id)?.display_name ?? u.user_metadata.name } : null,
       shop: this.hasShop ? this.shop : null }
   }
 
@@ -123,16 +182,17 @@ export class MockApi {
   }
 
   // --- wiring -------------------------------------------------------------------------------
-  async install(page: Page) {
+  async install(page: Page, as: MockUser = USER) {
     if (this.signedIn) {
-      const session = { access_token: 'e2e-token', refresh_token: 'e2e-refresh', token_type: 'bearer', expires_in: 3600,
-        expires_at: Math.floor(Date.now() / 1000) + 3600, user: { ...USER, aud: 'authenticated', role: 'authenticated' } }
+      const session = { access_token: `e2e:${as.id}`, refresh_token: 'e2e-refresh', token_type: 'bearer', expires_in: 3600,
+        expires_at: Math.floor(Date.now() / 1000) + 3600, user: { ...as, aud: 'authenticated', role: 'authenticated' } }
       await page.addInitScript((s) => { window.localStorage.setItem('sb-sb-auth-token', JSON.stringify(s)) }, session)
     }
     // Context-level, so pop-ups (the bill photo tab) are answered too.
     const ctx = page.context()
     await ctx.route(`${SB}/**`, (r) => this.auth(r))
     await ctx.route(`${API}/**`, (r) => this.handle(r))
+    await ctx.routeWebSocket(/sb\.test\/realtime/, (ws) => this.hub.attach(ws, as.id))
     // Fonts are decoration; don't let the network slow tests down.
     await ctx.route('https://fonts.googleapis.com/**', (r) => r.fulfill({ status: 200, contentType: 'text/css', body: '' }))
   }
@@ -174,7 +234,8 @@ export class MockApi {
       const bytes = uploadedBytes(req.postDataBuffer(), ct)
       if (bytes) this.uploads.push({ path, bytes, mime: file?.[2] ?? '' })
     }
-    this.calls.push({ method, path: path + url.search, body })
+    this.actor = /e2e:(\S+)/.exec(req.headers()['authorization'] ?? '')?.[1] ?? USER.id
+    this.calls.push({ method, path: path + url.search, body, actor: this.actor })
     if (this.offline) return route.abort('internetdisconnected')
     const fail = this.failNext[`${method} ${seg[0]}`]
     if (fail) {
@@ -188,8 +249,12 @@ export class MockApi {
     if (path === '/health') return ok({ ok: true })
     if (path === '/me' && method === 'GET') return ok(this.me())
     if (path === '/me' && method === 'PATCH') {
+      if (typeof body.display_name === 'string') { const mm = this.members.find((x) => x.user_id === this.actor); if (mm) mm.display_name = body.display_name }
       if (typeof body.lang === 'string') this.lang = body.lang
       if (typeof body.tts_voice === 'string') this.voice = body.tts_voice
+      for (const k of ['ui_lang', 'voice_lang', 'report_lang', 'speech_auto'] as const) {
+        if (k in body) (this.langs as Record<string, unknown>)[k] = body[k]
+      }
       return ok(this.me().membership)
     }
     if (path === '/shops' && method === 'POST') {
@@ -223,7 +288,9 @@ export class MockApi {
     if (seg[0] === 'entries' && seg.length >= 2) {
       const e = this.entries.find((x) => x.id === seg[1])
       if (!e) return this.err(route, 404, 'not_found', 'That entry does not exist.')
-      if (seg.length === 2 && method === 'GET') return ok({ entry: this.out(e), history: this.history[e.id] ?? [] })
+      if (seg.length === 2 && method === 'GET') {
+        return ok({ entry: { ...this.out(e), added_by: this.memberName(e.created_by) }, history: (this.history[e.id] ?? []).map((h) => ({ ...h, by: this.memberName(h.actor), by_you: h.actor === this.actor })) })
+      }
       if (seg.length === 2 && method === 'PATCH') {
         if (e.status === 'voided') return this.err(route, 409, 'voided', "Voided entries can't be changed.")
         const changes: History['changes'] = []
@@ -240,18 +307,21 @@ export class MockApi {
           e.party_id = this.party(String(body.party_name), kind)
           changes.push({ field: 'party', old: before, new: body.party_name })
         }
-        this.history[e.id].push({ action: 'edit', at: new Date().toISOString(), by: 'you', changes })
+        this.history[e.id].push({ action: 'edit', at: new Date().toISOString(), seq: ++this.historySeq, actor: this.actor, changes })
+        this.hub.publish('entries', 'UPDATE', this.record(e))
         return ok(this.out(e))
       }
       if (seg[2] === 'confirm') {
         if (e.status !== 'pending') return this.err(route, 409, 'not_pending', 'Only pending entries can be confirmed.')
         e.status = 'confirmed'
-        this.history[e.id].push({ action: 'confirm', at: new Date().toISOString(), by: 'you', changes: [{ field: 'status', old: 'pending', new: 'confirmed' }] })
+        this.hub.publish('entries', 'UPDATE', this.record(e))
+        this.history[e.id].push({ action: 'confirm', at: new Date().toISOString(), seq: ++this.historySeq, actor: this.actor, changes: [{ field: 'status', old: 'pending', new: 'confirmed' }] })
         return ok(this.out(e))
       }
       if (seg[2] === 'void') {
-        if (e.status !== 'voided') this.history[e.id].push({ action: 'void', at: new Date().toISOString(), by: 'you', changes: [{ field: 'status', old: e.status, new: 'voided' }] })
+        if (e.status !== 'voided') this.history[e.id].push({ action: 'void', at: new Date().toISOString(), seq: ++this.historySeq, actor: this.actor, changes: [{ field: 'status', old: e.status, new: 'voided' }] })
         e.status = 'voided'
+        this.hub.publish('entries', 'UPDATE', this.record(e))
         return ok(this.out(e))
       }
     }
@@ -370,9 +440,21 @@ export class MockApi {
       }
     }
 
+    if (path === '/members') {
+      return ok({ members: this.members.map((mm) => ({ ...mm, name: this.memberName(mm.user_id), you: mm.user_id === this.actor })), invite_code: this.shop.invite_code })
+    }
+    if (path === '/activity') {
+      const rows = Object.entries(this.history).flatMap(([entryId, hs]) => hs.map((h, i) => ({ h, i, e: this.entries.find((x) => x.id === entryId)! })))
+        .sort((a, b) => (b.h.seq ?? 0) - (a.h.seq ?? 0) || b.h.at.localeCompare(a.h.at) || b.i - a.i).slice(0, 30)
+      return ok({ activity: rows.map(({ h, e }, n) => ({ id: n + 1, at: h.at, action: h.action, entry_id: e.id, by: this.memberName(h.actor), by_you: h.actor === this.actor,
+        type: e.type, amount_paise: e.amount_paise, party_name: this.out(e).party_name, note: e.note, changed: h.action === 'edit' ? h.changes.map((c) => c.field) : [] })) })
+    }
     if (path === '/review') return ok(this.review())
     if (path === '/insights/weekly') return ok(this.insights ?? this.weekly())
-    if (path === '/tts') return ok({ text: String(body.text), audio_b64: SILENT_MP3 })
+    if (path === '/tts') {
+      this.ttsLangs.push(this.outLang(body.purpose === 'report' ? 'report' : 'voice'))
+      return ok({ text: this.tag(String(body.text), body.purpose === 'report' ? 'report' : 'voice'), audio_b64: SILENT_MP3 })
+    }
     if (seg[0] === 'media') return ok({ url: `${API}/files/${seg[1]}/${seg[2]}` })
     if (seg[0] === 'files') return route.fulfill({ status: 200, contentType: seg[1] === 'voice' ? 'audio/mpeg' : 'image/png', body: '' })
     return this.err(route, 404, 'not_found', 'That page or item does not exist.')
@@ -384,7 +466,13 @@ export class MockApi {
   memberName(id: string | undefined | null) {
     const mm = this.members.find((x) => x.user_id === id)
     if (!mm) return 'Member'
-    return id === USER.id ? `${mm.display_name} (you)` : mm.display_name
+    return id === this.actor ? `${mm.display_name} (you)` : mm.display_name
+  }
+
+  /** The entries row as the database holds it (what Realtime sends). */
+  record(e: Entry) {
+    const { party_name: _n, party_kind: _k, ...row } = e
+    return row as unknown as Record<string, unknown>
   }
 
   /** GET /ledger filtering, as the SQL does it: voided only when asked, newest first. */
@@ -417,8 +505,23 @@ export class MockApi {
       .map((p) => ({ party_id: p.party_id, name: p.display_name, balance_paise: p.balance_paise, days_since_last_activity: 1 }))
     const text = 'So far this week, the shop is on track.'
     return { week_start: today(6), week_end: today(0), today: today(0), this_week: sum(0, 6), last_week: sum(7, 13),
-      top_debtors: debtors, narration: text, narration_en: text }
+      top_debtors: debtors, narration: this.tag(text, 'report'), narration_en: text }
   }
+
+  /** The backend's langs.py, mirrored: read-backs follow voice_lang, summaries report_lang, both
+   * falling back to the language spoken in (GOAL_2.0 P5.3). */
+  outLang(kind: 'voice' | 'report') {
+    return (kind === 'report' ? this.langs.report_lang : this.langs.voice_lang) ?? this.lang
+  }
+
+  /** Stands in for translation: "[ta-IN] text" (the backend test fakes do the same). */
+  tag(text: string, kind: 'voice' | 'report') {
+    const lang = this.outLang(kind)
+    return lang === 'en-IN' ? text : `[${lang}] ${text}`
+  }
+
+  /** The language of every POST /tts, in order. */
+  ttsLangs: string[] = []
 
   private fromQueue(route: Route, queue: unknown[], what: string) {
     const next = queue.shift()

@@ -1,6 +1,6 @@
 import type { ButtonHTMLAttributes, ReactNode, Ref } from 'react'
 import { Link } from 'react-router'
-import { t } from '../../strings/en'
+import { t } from '../../strings'
 
 type Variant = 'primary' | 'inverse' | 'outline' | 'text'
 

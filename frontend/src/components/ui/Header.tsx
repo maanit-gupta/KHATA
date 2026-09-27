@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { Link } from 'react-router'
-import { t } from '../../strings/en'
+import { t } from '../../strings'
 
 /**
  * Fixed 56px bar: uppercase wordmark top-left (no logo mark), nav chips on the right.

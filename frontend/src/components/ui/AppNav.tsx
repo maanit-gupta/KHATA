@@ -2,18 +2,19 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useRef, useState } from 'react'
 import { NavLink } from 'react-router'
 import { useReducedMotion } from '../../hooks/useReducedMotion'
-import { t } from '../../strings/en'
+import { t } from '../../strings'
 import { ChipButton, CountBadge, NavChip } from './Chip'
 
 const ITEMS = [
-  { to: '/app', label: t.nav.home, end: true },
-  { to: '/app/ledger', label: t.nav.ledger },
-  { to: '/app/parties', label: t.nav.parties },
-  { to: '/app/review', label: t.nav.review, review: true },
-  { to: '/app/settings', label: t.nav.settings },
+  { to: '/app', key: 'home', end: true },
+  { to: '/app/ledger', key: 'ledger' },
+  { to: '/app/dashboard', key: 'dashboard' },
+  { to: '/app/parties', key: 'parties' },
+  { to: '/app/review', key: 'review', review: true },
+  { to: '/app/settings', key: 'settings' },
 ] as const
 
-/** HOME / LEDGER / PARTIES / REVIEW / SETTINGS (GOAL_2.0 P3.1). Below 900px: one MENU chip → full-screen ink overlay. */
+/** HOME / LEDGER / DASHBOARD / PARTIES / REVIEW / SETTINGS (GOAL_2.0 P3.1, P6). Below 900px: one MENU chip → full-screen ink overlay. */
 export function AppNav({ reviewCount = 0 }: { reviewCount?: number }) {
   const [open, setOpen] = useState(false)
   const reduced = useReducedMotion()
@@ -37,7 +38,7 @@ export function AppNav({ reviewCount = 0 }: { reviewCount?: number }) {
       <div className="hidden items-center gap-2 app:flex">
         {ITEMS.map((i) => (
           <NavChip key={i.to} to={i.to} end={'end' in i} badge={'review' in i ? badge : undefined}>
-            {i.label}
+            {t.nav[i.key]}
           </NavChip>
         ))}
       </div>
@@ -79,7 +80,7 @@ export function AppNav({ reviewCount = 0 }: { reviewCount?: number }) {
                       `flex items-center gap-3 py-1 uppercase leading-[0.95] tracking-[-0.02em] text-[clamp(48px,14vw,96px)] ${isActive ? 'underline decoration-2 underline-offset-8' : ''}`
                     }
                   >
-                    {i.label}
+                    {t.nav[i.key]}
                     {'review' in i && reviewCount > 0 && (
                       <span className="inline-flex size-10 items-center justify-center bg-cyan t-label-lg text-ink">{reviewCount}</span>
                     )}

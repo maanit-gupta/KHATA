@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion'
 import type { ReactNode } from 'react'
-import { t } from '../../strings/en'
+import { t } from '../../strings'
 import { StatusSquare, type Status } from './StatusSquare'
 
 type RowProps = {

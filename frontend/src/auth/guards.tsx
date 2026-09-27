@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Navigate, Outlet } from 'react-router'
-import { t } from '../strings/en'
+import { t } from '../strings'
 import { useMe, useSession } from './hooks'
 
 const WAKING_AFTER_MS = 3000 // the free Render instance sleeps; its first answer can be slow

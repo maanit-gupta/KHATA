@@ -8,7 +8,7 @@ import { SayItYourWay } from '../components/landing/SayItYourWay'
 import { ChipButton, NavChip } from '../components/ui/Chip'
 import { Header } from '../components/ui/Header'
 import { useReducedMotion } from '../hooks/useReducedMotion'
-import { t } from '../strings/en'
+import { t } from '../strings'
 
 const L = t.landing
 

@@ -1,6 +1,6 @@
 import { useEffect, type KeyboardEvent } from 'react'
 import { useHoldRecorder } from '../../hooks/useHoldRecorder'
-import { t } from '../../strings/en'
+import { t } from '../../strings'
 
 type Props = {
   label: string

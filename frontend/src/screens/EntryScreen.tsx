@@ -9,9 +9,10 @@ import { StatusSquare } from '../components/ui/StatusSquare'
 import { Toast } from '../components/ui/Toast'
 import { formatWhen, patchEntry, useEntry, type HistoryRow } from '../lib/entry'
 import { confirmEntry, ENTRY_TYPES, reasonText, useLedgerMutation, voidEntry, type Entry, type EntryType } from '../lib/ledger'
+import { shown } from '../lib/members'
 import { openBill, playRecording } from '../lib/media'
 import { formatPaise } from '../lib/money'
-import { t } from '../strings/en'
+import { t } from '../strings'
 
 const PARTY_OPTIONAL: EntryType[] = ['cash_sale', 'purchase_paid']
 
@@ -52,6 +53,10 @@ function Summary({ entry }: { entry: Entry }) {
     <div className="flex flex-col gap-3">
       <p className="flex items-center gap-3 t-label"><StatusSquare status={entry.status} />{t.status[entry.status]} · {t.entry.source[entry.source]}</p>
       <p className={`t-amount ${entry.status === 'voided' ? 'line-through' : ''}`}>{formatPaise(entry.amount_paise)}</p>
+      {entry.added_by && <p className="t-body" data-testid="added-by">{t.entry.addedBy(shown(entry.added_by))}</p>}
+      {entry.confirmed_by_name && entry.confirmed_by && entry.confirmed_by !== entry.created_by && entry.status === 'confirmed' && (
+        <p className="t-body" data-testid="confirmed-by">{t.entry.confirmedBy(shown(entry.confirmed_by_name))}</p>
+      )}
       {entry.review_reason && entry.status === 'pending' && <p className="t-body">{reasonText(entry.review_reason)}</p>}
       <div className="flex gap-2">
         {entry.voice_note_id && (
@@ -152,7 +157,7 @@ function History({ rows }: { rows: HistoryRow[] }) {
         {rows.map((h, i) => (
           <li key={i} className="grid gap-1 border-t border-ink py-4 app:grid-cols-[1fr_2fr] app:gap-4" data-testid="history-row">
             <div>
-              <p className="t-label">{t.entry.actions[h.action] ?? h.action} · {h.by === 'you' ? t.entry.you : t.entry.another}</p>
+              <p className="t-label">{t.entry.actions[h.action] ?? h.action} · {shown(h.by)}</p>
               <p className="t-body">{formatWhen(h.at)}</p>
             </div>
             <ul className="t-body">

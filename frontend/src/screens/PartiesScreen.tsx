@@ -10,7 +10,7 @@ import { Row } from '../components/ui/Row'
 import { useReveal } from '../hooks/useReveal'
 import { balanceText, useParties, useParty, type Entry } from '../lib/ledger'
 import { openBill, playRecording } from '../lib/media'
-import { t } from '../strings/en'
+import { t } from '../strings'
 import { Screen } from './AppShell'
 
 type KindFilter = 'customer' | 'supplier' | null

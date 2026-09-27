@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from './api'
 import { formatPaise } from './money'
-import { t } from '../strings/en'
+import { t } from '../strings'
 
 export type EntryType = 'credit_given' | 'payment_received' | 'cash_sale' | 'purchase_credit' | 'purchase_paid' | 'payment_made' | 'expense'
 export const ENTRY_TYPES: EntryType[] = ['credit_given', 'payment_received', 'cash_sale', 'purchase_credit', 'purchase_paid', 'payment_made', 'expense']
@@ -13,6 +13,8 @@ export type Entry = {
   note: string | null; occurred_on: string; auto_saved: boolean; review_reason: string | null
   source: 'voice' | 'receipt' | 'manual'; created_at: string
   receipt_id?: string | null; voice_note_id?: string | null
+  created_by?: string | null; confirmed_by?: string | null; added_by?: string | null; confirmed_by_name?: string | null
+  expense_category?: string | null
 }
 export type Party = {
   party_id: string; display_name: string; kind: 'customer' | 'supplier'
@@ -28,8 +30,9 @@ export type VoiceResult = {
 export const useEntries = () =>
   useQuery({ queryKey: ['entries'], queryFn: () => api<{ entries: Entry[] }>('/entries?limit=20').then((r) => r.entries) })
 
-export const useParties = () =>
-  useQuery({ queryKey: ['parties'], queryFn: () => api<{ parties: Party[] }>('/parties').then((r) => r.parties) })
+export const fetchParties = () => api<{ parties: Party[] }>('/parties').then((r) => r.parties)
+
+export const useParties = () => useQuery({ queryKey: ['parties'], queryFn: fetchParties })
 
 export const useParty = (id: string) =>
   useQuery({ queryKey: ['party', id], queryFn: () => api<{ party: Party; entries: Entry[] }>(`/parties/${id}`) })

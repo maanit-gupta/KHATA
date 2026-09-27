@@ -1,6 +1,6 @@
 import { motion, useScroll, useTransform } from 'framer-motion'
 import { useReducedMotion } from '../../hooks/useReducedMotion'
-import { t } from '../../strings/en'
+import { t } from '../../strings'
 import { ButtonLink } from '../ui/Button'
 import { PixelSquares } from '../ui/PixelSquares'
 import { RibbedGlass } from '../ui/RibbedGlass'

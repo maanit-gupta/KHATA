@@ -33,6 +33,15 @@ are listed at the end with their evidence.
   Include a thermal till slip, a handwritten kachcha bill and a faded one. Each voice file costs
   about 3 Sarvam + 1 Groq calls; each bill 2–11 Sarvam calls. *Why not Claude:* only the owner has
   real shop recordings and real paper bills.
+- **N-012 Native review of the five UI translations.** `frontend/src/strings/{hi,ta,te,kn,ml}.ts`
+  were written by Claude, not by native speakers (GOAL_2.0 P5.2), and each file says
+  `NEEDS NATIVE REVIEW` at the top. Amounts, names and brand words are unchanged by design.
+  **Do:** have a native speaker of each language switch Settings → Languages → On-screen text to
+  their language, walk every screen (Home, Ledger, Dashboard, Parties, Scan, Review, Settings,
+  the landing and About pages), and correct the file directly: same keys, only the text changes
+  (`npx tsc -b` fails if a key is missing or extra). Screenshots in en/hi/ta:
+  `artifacts/screens/P5-languages/`. *Why not Claude:* the goal forbids spending Sarvam calls on
+  UI text, and only a native speaker can judge what reads naturally in a shop.
 - **N-009 Pick how Hindi and Tamil read-backs are translated.** `artifacts/tts-compare/` has 6
   MP3s: the same three read-backs in Hindi and Tamil, translated three ways (Mayura colloquial,
   which the app uses now; Mayura formal; sarvam-translate). `report.md` there shows every text and

@@ -264,6 +264,19 @@ def c_statement(client, w):
     assert client.get(f"/parties/{w.a_party}/statement", headers=w.a["headers"]).status_code == 200
 
 
+def c_members(client, w):
+    r = client.get("/members", headers=w.a["headers"]).json()
+    assert [m["user_id"] for m in r["members"]] == [w.a["id"]] and r["invite_code"] == w.a["invite_code"]
+    _no_b(w, r)
+    assert w.b["invite_code"] not in str(r)
+
+
+def c_activity(client, w):
+    r = client.get("/activity", headers=w.a["headers"]).json()
+    assert r["activity"] and all(a["entry_id"] == w.a_entry["id"] for a in r["activity"])
+    _no_b(w, r)
+
+
 CASES = {
     ("GET", "/me"): c_me,
     ("PATCH", "/me"): c_patch_me,
@@ -293,6 +306,8 @@ CASES = {
     ("GET", "/ledger/export.csv"): c_ledger_csv,
     ("GET", "/parties/suggest"): c_suggest,
     ("GET", "/parties/{party_id}/statement"): c_statement,
+    ("GET", "/members"): c_members,
+    ("GET", "/activity"): c_activity,
 }
 # Routes that act only on the caller's own shop by construction (shop_id comes from the caller's
 # membership, never from the request) and have no B-owned id to aim at. Each has a reason.
@@ -314,7 +329,7 @@ SPEC_ROUTES = {
     ("GET", "/media/{bucket}/{item_id}"),
 } | {  # GOAL_2.0 additions (CLAUDE.md §6.5 is updated with each)
     ("GET", "/ledger"), ("GET", "/ledger/export.csv"), ("GET", "/parties/suggest"),
-    ("GET", "/parties/{party_id}/statement"),
+    ("GET", "/parties/{party_id}/statement"), ("GET", "/members"), ("GET", "/activity"),
 }
 
 

@@ -6,7 +6,7 @@ import { TransitionRoutes } from './components/ui/PageTransition'
 import { AppShell } from './screens/AppShell'
 import { AuthScreen } from './screens/AuthScreen'
 import { LedgerScreen } from './screens/LedgerScreen'
-import { t } from './strings/en'
+import { t } from './strings'
 
 // /dev/ui exists only in dev: Vite replaces import.meta.env.DEV with false in production builds,
 // so these imports are dead code and the gallery is not bundled.
@@ -18,6 +18,7 @@ const OnboardingScreen = lazy(() => import('./screens/OnboardingScreen').then((m
 const PartiesScreen = lazy(() => import('./screens/PartiesScreen').then((m) => ({ default: m.PartiesScreen })))
 const PartyDetailScreen = lazy(() => import('./screens/PartiesScreen').then((m) => ({ default: m.PartyDetailScreen })))
 const LedgerTableScreen = lazy(() => import('./screens/LedgerTableScreen').then((m) => ({ default: m.LedgerTableScreen })))
+const DashboardScreen = lazy(() => import('./screens/DashboardScreen').then((m) => ({ default: m.DashboardScreen })))
 const ReviewScreen = lazy(() => import('./screens/ReviewScreen').then((m) => ({ default: m.ReviewScreen })))
 const EntryScreen = lazy(() => import('./screens/EntryScreen').then((m) => ({ default: m.EntryScreen })))
 const ScanScreen = lazy(() => import('./screens/ScanScreen').then((m) => ({ default: m.ScanScreen })))
@@ -53,6 +54,7 @@ export function App() {
           <Route path="/app" element={<AppShell />}>
             <Route index element={<LedgerScreen />} />
             <Route path="ledger" element={<LedgerTableScreen />} />
+            <Route path="dashboard" element={<DashboardScreen />} />
             <Route path="parties" element={<PartiesScreen />} />
             <Route path="parties/:id" element={<PartyDetailScreen />} />
             <Route path="review" element={<ReviewScreen />} />

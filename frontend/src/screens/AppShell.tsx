@@ -1,13 +1,31 @@
-import { Suspense, type ReactNode } from 'react'
+import { Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Outlet } from 'react-router'
+import { useMe } from '../auth/hooks'
 import { AppNav } from '../components/ui/AppNav'
-import { Header } from '../components/ui/Header'
 import { H2 } from '../components/ui/H2'
+import { Header } from '../components/ui/Header'
+import { Toast } from '../components/ui/Toast'
+import { useLiveSync } from '../lib/live'
+import { useMembers } from '../lib/members'
 import { useReview } from '../lib/review'
 
-/** In-app chrome: --bone header with the nav chips; screens render below it. */
+const LIVE_TOAST_MS = 4000
+
+/** In-app chrome: --bone header with the nav chips; screens render below it. Keeps the shop in
+ * live sync with other members (GOAL_2.0 P4.2) and says when someone else adds an entry. */
 export function AppShell() {
   const review = useReview()
+  const me = useMe()
+  useMembers() // names for "Added by" and the live toast
+  const [liveToast, setLiveToast] = useState<string | null>(null)
+  const timer = useRef<number | undefined>(undefined)
+  const announce = useCallback((text: string) => {
+    window.clearTimeout(timer.current)
+    setLiveToast(text)
+    timer.current = window.setTimeout(() => setLiveToast(null), LIVE_TOAST_MS)
+  }, [])
+  useEffect(() => () => window.clearTimeout(timer.current), [])
+  useLiveSync(me.data?.membership?.shop_id, me.data?.user.id, announce)
   return (
     <div className="min-h-dvh bg-paper">
       <Header home="/app">
@@ -18,6 +36,7 @@ export function AppShell() {
           <Outlet />
         </Suspense>
       </main>
+      {liveToast && <Toast testId="live-toast">{liveToast}</Toast>}
     </div>
   )
 }

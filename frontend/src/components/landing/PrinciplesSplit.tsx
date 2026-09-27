@@ -1,4 +1,4 @@
-import { t } from '../../strings/en'
+import { t } from '../../strings'
 import { PixelSquares } from '../ui/PixelSquares'
 import { Row } from '../ui/Row'
 import { RevealHeading } from './reveal'

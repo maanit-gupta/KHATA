@@ -15,7 +15,7 @@ import { mediaUrl } from '../lib/media'
 import { formatPaise } from '../lib/money'
 import { PhotoError, preparePhoto, releasePhoto, rotatePhoto, type Prepared } from '../lib/photo'
 import { useReceipt, type Kind, type Receipt } from '../lib/receipts'
-import { t } from '../strings/en'
+import { t } from '../strings'
 import { Screen } from './AppShell'
 
 type SaveResult = { decision: 'auto' | 'confirm'; entry: Entry; suggestion: string | null }
