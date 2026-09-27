@@ -1,11 +1,14 @@
 import { useQuery } from '@tanstack/react-query'
 import { api } from './api'
 import type { Entry } from './ledger'
+import { uiLang } from '../strings'
 
 export type HistoryRow = {
   action: 'create' | 'edit' | 'confirm' | 'void'
   at: string
-  by: 'you' | 'another_member'
+  /** The member's name, "(you)" after your own (GOAL_2.0 P4.1). */
+  by: string
+  by_you?: boolean
   changes: { field: string; old: unknown; new: unknown }[]
 }
 
@@ -19,9 +22,8 @@ export const useEntry = (id: string) =>
 export const patchEntry = ({ id, body }: { id: string; body: Record<string, unknown> }) =>
   api<Entry>(`/entries/${id}`, { method: 'PATCH', body: JSON.stringify(body) })
 
-const when = new Intl.DateTimeFormat('en-IN', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Kolkata' })
-
-/** Audit timestamps shown in shop time (CLAUDE.md §9b). */
+/** Audit timestamps shown in shop time (CLAUDE.md §9b), in the on-screen language with 0–9 digits. */
 export function formatWhen(iso: string) {
-  return when.format(new Date(iso))
+  return new Intl.DateTimeFormat(uiLang(), { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Kolkata', numberingSystem: 'latn' })
+    .format(new Date(iso))
 }

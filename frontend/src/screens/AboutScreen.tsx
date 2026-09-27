@@ -4,7 +4,7 @@ import { H2 } from '../components/ui/H2'
 import { Header } from '../components/ui/Header'
 import { Row } from '../components/ui/Row'
 import { StatusSquare, type Status } from '../components/ui/StatusSquare'
-import { t } from '../strings/en'
+import { t } from '../strings'
 
 const a = t.about
 

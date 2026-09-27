@@ -6,7 +6,7 @@ import { SplitLayout } from '../components/SplitLayout'
 import { Button } from '../components/ui/Button'
 import { Field } from '../components/ui/Field'
 import { supabase } from '../lib/supabase'
-import { t } from '../strings/en'
+import { t } from '../strings'
 
 type Mode = 'login' | 'signup'
 type Errors = Partial<Record<'name' | 'email' | 'password' | 'form', string>>

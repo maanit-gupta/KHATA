@@ -4,12 +4,13 @@ import type { ReactNode } from 'react'
  * Ink bar pinned to the bottom, full width, white uppercase text (DESIGN.md §5). `countdownMs`
  * draws the white top hairline shrinking 1→0 — linear, and kept under reduced motion (§6.5, §8).
  */
-export function Toast({ children, action, countdownMs, inline = false }:
-  { children: ReactNode; action?: ReactNode; countdownMs?: number; inline?: boolean }) {
+export function Toast({ children, action, countdownMs, inline = false, testId }:
+  { children: ReactNode; action?: ReactNode; countdownMs?: number; inline?: boolean; testId?: string }) {
   return (
     <div
       role="status"
       aria-live="polite"
+      data-testid={testId}
       className={`on-dark ${inline ? 'relative' : 'fixed inset-x-0 bottom-0 z-50'} flex min-h-14 items-center justify-between gap-4 bg-ink gutter-x text-paper`}
       style={inline ? undefined : { paddingBottom: 'env(safe-area-inset-bottom)' }}
     >

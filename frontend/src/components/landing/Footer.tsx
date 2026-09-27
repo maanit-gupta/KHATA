@@ -1,5 +1,5 @@
 import { Link } from 'react-router'
-import { t } from '../../strings/en'
+import { t } from '../../strings'
 import { PixelSquares } from '../ui/PixelSquares'
 
 const L = t.landing

@@ -35,13 +35,14 @@ def test_every_action_is_logged_with_actor(client, users, fake_sarvam, fake_groq
     assert void["actor"] == owner["id"]
     assert void["before"]["status"] == "confirmed" and void["after"]["status"] == "voided"
 
-    # History as each member sees it: "you" vs "another member", old → new.
+    # History as each member sees it: real names, "(you)" after your own (GOAL_2.0 P4.1), old → new.
     hist = client.get(f"/entries/{e['id']}", headers=owner["headers"]).json()["history"]
-    assert [h["by"] for h in hist] == ["you", "another_member", "you"]
+    assert [h["by"] for h in hist] == ["Test User (you)", "Staff", "Test User (you)"]
+    assert [h["by_you"] for h in hist] == [True, False, True]
     amount_change = [c for c in hist[1]["changes"] if c["field"] == "amount_paise"][0]
     assert amount_change == {"field": "amount_paise", "old": 10000, "new": 15000}
     staff_view = client.get(f"/entries/{e['id']}", headers=staff["headers"]).json()["history"]
-    assert [h["by"] for h in staff_view] == ["another_member", "you", "another_member"]
+    assert [h["by"] for h in staff_view] == ["Test User", "Staff (you)", "Test User"]
 
 
 def test_confirm_is_logged(client, users, fake_sarvam, fake_groq):

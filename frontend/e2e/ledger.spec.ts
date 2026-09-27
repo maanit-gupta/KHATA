@@ -37,7 +37,7 @@ test('ledger: voice panel, weekly card, recent rows', async ({ page }) => {
   await expect(card.getByText('Owes you ₹1,000')).toBeVisible()
   await shots(page, 'P6-insights', 'ledger-with-week')
   await card.getByRole('button', { name: 'Play the summary' }).click()
-  await expect.poll(() => lastCall(m, 'POST', '/tts')?.body).toEqual({ text: 'So far this week, 1250.5 rupees in cash sales.' })
+  await expect.poll(() => lastCall(m, 'POST', '/tts')?.body).toEqual({ text: 'So far this week, 1250.5 rupees in cash sales.', purpose: 'report' })
 })
 
 test('voice entry: auto-saved with read-back, 5 s undo', async ({ page }) => {

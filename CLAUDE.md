@@ -128,8 +128,8 @@ Only total, vendor, and date are stored as fields; the full raw OCR JSON is kept
 | Method & path | Body / query | Returns |
 |---|---|---|
 | GET /health | — | `{ok: true}` |
-| GET /me | — | user, membership (lang, tts_voice, role), shop (or `null` → onboarding) |
-| PATCH /me | `{lang?, tts_voice?}` | membership |
+| GET /me | — | user, membership (lang, tts_voice, role, display_name, ui_lang, voice_lang, report_lang, speech_auto), shop (or `null` → onboarding) |
+| PATCH /me | `{lang?, tts_voice?, display_name?, ui_lang?, voice_lang?, report_lang?, speech_auto?}` (the three `*_lang` accept `null` = same as `lang`; GOAL_2.0 P4.1, P5) | membership |
 | POST /shops | `{name, lang}` | shop + membership (caller = owner) |
 | POST /shops/join | `{code, lang}` | shop + membership (staff); 404 on bad code |
 | GET /parties | `?kind=&q=` | parties with balance_paise, needs_review |
@@ -149,13 +149,15 @@ Only total, vendor, and date are stored as fields; the full raw OCR JSON is kept
 | GET /receipts/{id} | — | status, stage (uploaded/reading/checking while running), vendor_name, bill_date, total_paise, total_check (ok/check), ocr_text, file_type, error |
 | POST /receipts/{id}/save | `{vendor_name, bill_date, total_rupees, customer_name?, kind?, settled?}`; allowed 90 s after upload even if still reading | entry + decision (save rules apply) |
 | GET /insights/weekly | — | metrics, narration (in caller's language, number-guarded) |
-| POST /tts | `{text}` English, ≤ 2500 chars; localized with the number guard first (D-006) | `{text, audio_b64}` in caller's language/voice |
+| POST /tts | `{text, purpose?: readback/report}` English, ≤ 2500 chars; localized with the number guard first (D-006) | `{text, audio_b64}` in the caller's voice language (`report` → report language, D-062) |
 | GET /review | — | rows of `review_queue` |
 | GET /media/{voice or receipts}/{id} | — | `{url}` signed, 10 min |
 | GET /ledger | `?from=&to=&type=&party=&source=&member=&status=&q=&page=` (lists comma-separated; voided only when `status` names it) | `{rows (with added_by), page, page_size (50), total_count, pages, totals {cash_in, credit_given, collected, expenses} (confirmed only), members}` (GOAL_2.0 P3.1) |
 | GET /ledger/export.csv | same filters | CSV, UTF-8 with BOM: Date, Party, Type, Amount (₹) (rupees, 2 decimals), Source, Added by, Status, Note, Recorded at (IST) (P3.3) |
 | GET /parties/suggest | `?q=&kind=` | `{parties}`: find_party matches, then name prefix matches (P3.4) |
 | GET /parties/{id}/statement | `?from=&to=` | `{party, opening_balance_paise, closing_balance_paise, rows [{entry_id, occurred_on, type, amount_paise, note, source, delta_paise, running_balance_paise}]}` from the `party_statement` view (P3.2) |
+| GET /members | — | `{members [{user_id, name ("(you)" after your own), display_name, role, joined_at, you}], invite_code}` (P4.6) |
+| GET /activity | — | last 30 audit actions: `{activity [{id, entry_id, action, at, by, by_you, type, amount_paise, party_name, note, changed}]}` (P4.4) |
 
 Amounts cross the API as rupees (number) in requests and paise (integer) in responses; the
 frontend formats paise as `₹1,250` (en-IN grouping). Errors: `{error: {code, message}}` with a
@@ -248,4 +250,7 @@ until the human says so.
 - §6.4 insights: "this week so far" is compared with all of last week, Mon–Sun (D-029); narrations are
   number-guarded with a template fallback (D-031) and cached per language (D-030).
 - Review queue: new parties also get KEEP AS IS (D-025).
+- §2 / §3 (GOAL_2.0): UI text is no longer English-only: a language per aspect (screens, speaking,
+  read-backs, reports), each falling back to `lang` (D-062); history and lists show real member
+  names with "(you)" after your own, replacing "You" / "Another member" (D-061).
 - Voice, receipt and TTS routes are rate-limited per user; over the limit → 429 `rate_limited` (D-037).

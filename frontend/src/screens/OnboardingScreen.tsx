@@ -7,7 +7,7 @@ import { Field } from '../components/ui/Field'
 import { Row } from '../components/ui/Row'
 import { useReveal } from '../hooks/useReveal'
 import { api, ApiError, type Membership, type Shop } from '../lib/api'
-import { LANG_ORDER, t, type Lang } from '../strings/en'
+import { LANG_ORDER, t, type Lang } from '../strings'
 
 type Mode = 'create' | 'join'
 

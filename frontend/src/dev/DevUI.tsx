@@ -15,7 +15,7 @@ import { Toast, ToastAction } from '../components/ui/Toast'
 import { useReducedMotion } from '../hooks/useReducedMotion'
 import { resetReveals, useReveal } from '../hooks/useReveal'
 import { formatPaise } from '../lib/money'
-import { LANG_ORDER, t } from '../strings/en'
+import { LANG_ORDER, t } from '../strings'
 
 const TOKENS = [
   ['--ink', 'bg-ink', true], ['--ink-soft', 'bg-ink-soft', true], ['--cyan', 'bg-cyan', false],

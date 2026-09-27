@@ -20,7 +20,7 @@ import {
 } from '../lib/ledger'
 import { formatPaise } from '../lib/money'
 import { resolveVoiceEntry, uploadVoiceEntry, uploadVoiceQuestion, type Answer } from '../lib/voice'
-import { t } from '../strings/en'
+import { t } from '../strings'
 
 const UNDO_MS = 5000 // DESIGN.md §6.5
 

@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .config import get_settings
 from .errors import CatchAllErrors, install_error_handlers
-from .routers import entries, insights, ledger, me, media, parties, receipts, review, shops, tts, voice
+from .routers import entries, insights, ledger, me, media, members, parties, receipts, review, shops, tts, voice
 
 logging.basicConfig(level=logging.INFO)
 # httpx logs every request URL at INFO (Supabase filters carry user ids). Keep only warnings.
@@ -56,6 +56,7 @@ app.include_router(me.router)
 app.include_router(shops.router)
 app.include_router(entries.router)
 app.include_router(ledger.router)
+app.include_router(members.router)
 app.include_router(parties.router)
 app.include_router(voice.router)
 app.include_router(receipts.router)

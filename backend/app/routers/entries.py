@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict
 from ..auth import CurrentUser, current_user
 from ..db import user_client
 from ..errors import AppError
+from ..members import FALLBACK, name_map, who
 from ..ledger import (ENTRY_SELECT, ENTRY_STATUSES, ENTRY_TYPES, NO_PARTY_TYPES, check_party, check_uuid,
                       entry_out, expected_party_kind, not_found, now_iso, parse_iso_date, party_kind_for,
                       require_membership, rupees_to_paise, today_ist)
@@ -101,9 +102,10 @@ def create_entry(body: NewEntry, user: CurrentUser = Depends(current_user)):
     return fetch_entry(db, row["id"])
 
 
-def _history(db, entry_id: str, user_id: str) -> list[dict]:
-    """audit_log rows as "who, when, what changed (old → new)" (DESIGN.md §6.11). Another member's
-    name isn't readable by a normal user (CLAUDE.md §3), so the actor is "you" or "another_member"."""
+def _history(db, entry_id: str, user: CurrentUser, shop_id: str) -> list[dict]:
+    """audit_log rows as "who, when, what changed (old → new)" (DESIGN.md §6.11). The actor is the
+    member's name, "(you)" after your own (GOAL_2.0 P4.1; this replaces D-009's you/another_member)."""
+    members = name_map(db, shop_id, user)
     rows = (db.table("audit_log").select("action, before, after, actor, at").eq("entry_id", entry_id)
             .order("at").order("id").execute().data)
     party_ids = {r[side]["party_id"] for r in rows for side in ("before", "after")
@@ -126,17 +128,20 @@ def _history(db, entry_id: str, user_id: str) -> list[dict]:
                 changes.append({"field": "party", "old": names.get(old, old), "new": names.get(new, new)})
             else:
                 changes.append({"field": f, "old": old if r["action"] != "create" else None, "new": new})
-        out.append({"action": r["action"], "at": r["at"],
-                    "by": "you" if r.get("actor") == user_id else "another_member", "changes": changes})
+        out.append({"action": r["action"], "at": r["at"], "by": who(members, r.get("actor")) or FALLBACK,
+                    "by_you": r.get("actor") == user.id, "changes": changes})
     return out
 
 
 @router.get("/entries/{entry_id}")
 def get_entry(entry_id: str, user: CurrentUser = Depends(current_user)):
-    require_membership(user)
+    m = require_membership(user)
     db = user_client(user.token)
     entry = fetch_entry(db, entry_id)
-    return {"entry": entry, "history": _history(db, entry_id, user.id), **_evidence(db, entry)}
+    names = name_map(db, m["shop_id"], user)
+    entry = {**entry, "added_by": who(names, entry.get("created_by")),
+             "confirmed_by_name": who(names, entry.get("confirmed_by"))}
+    return {"entry": entry, "history": _history(db, entry_id, user, m["shop_id"]), **_evidence(db, entry)}
 
 
 def _evidence(db, entry: dict) -> dict:

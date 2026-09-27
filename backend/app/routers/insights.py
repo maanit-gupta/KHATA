@@ -20,6 +20,7 @@ from fastapi import APIRouter, Depends
 from ..auth import CurrentUser, current_user
 from ..db import user_client
 from ..errors import AppError
+from ..langs import report_lang
 from .. import ledger
 from ..ledger import require_membership
 from ..qa_tools import rupees
@@ -126,10 +127,11 @@ def weekly(user: CurrentUser = Depends(current_user)):
         metrics = compute_metrics(db, m["shop_id"], today)
         narration_en = narrate(metrics)
         metrics["narration_local"] = {}
-    local = (metrics.get("narration_local") or {}).get(m["lang"])
+    lang = report_lang(m)                           # summaries follow the report language (GOAL_2.0 P5.3)
+    local = (metrics.get("narration_local") or {}).get(lang)
     if local is None:
-        local = localize(narration_en, m)
-        metrics["narration_local"] = {**(metrics.get("narration_local") or {}), m["lang"]: local}
+        local = localize(narration_en, m, lang)
+        metrics["narration_local"] = {**(metrics.get("narration_local") or {}), lang: local}
         cached = None                               # store the new translation with the cache row
     if cached is None:
         db.table("weekly_insights").upsert({"shop_id": m["shop_id"], "week_start": ws, "metrics": metrics,

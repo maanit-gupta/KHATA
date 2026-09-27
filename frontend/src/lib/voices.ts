@@ -1,4 +1,4 @@
-import type { Lang } from '../strings/en'
+import type { Lang } from '../strings'
 
 /** bulbul:v3 speakers (docs/sarvam-notes.md) minus `varun`, which is hidden (CLAUDE.md §9b).
  * Mirrors backend app/constants.py VOICES. */

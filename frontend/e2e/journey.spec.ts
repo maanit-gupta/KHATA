@@ -92,12 +92,12 @@ test('journey: signup → onboarding → manual → voice → confirm/undo → p
   await row.getByRole('button', { name: 'Keep as is' }).click()
   await expect(page.getByText('Nothing needs a look right now.')).toBeVisible()
 
-  // Settings: switch language to Tamil, hear a voice
+  // Settings: switch the spoken language to Tamil, hear a voice
   await page.goto('/app/settings')
-  await page.getByRole('button', { name: /My language/ }).click()
-  await page.getByRole('radio', { name: 'தமிழ்' }).click()
+  await page.getByRole('button', { name: /I speak in/ }).click()
+  await page.getByRole('radiogroup', { name: 'I speak in' }).getByRole('radio', { name: 'தமிழ்' }).click()
   await expect.poll(() => m.lang).toBe('ta-IN')
-  await page.getByRole('button', { name: /Voice/ }).click()
+  await page.getByRole('button', { name: /^Voice/ }).click()
   await page.getByRole('radio', { name: /^ishita/i }).click()
   await expect.poll(() => lastCall(m, 'POST', '/tts')?.body).toEqual({ text: 'Ramesh owes you 250 rupees.' })
   expect(SILENT_MP3.length).toBeGreaterThan(0)

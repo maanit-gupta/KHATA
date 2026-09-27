@@ -60,7 +60,7 @@ def verify_token(token: str) -> dict:
                           audience="authenticated", issuer=s.jwt_issuer, leeway=CLOCK_LEEWAY_S,
                           options={"require": ["exp", "sub"]})
     except (jwt.PyJWTError, jwt.PyJWKClientError) as e:
-        log.info("token refused: %s", type(e).__name__)   # the reason, never the token
+        log.info("login refused: %s", type(e).__name__)   # the reason, never the token
         raise _unauthorized()
 
 

@@ -1,4 +1,4 @@
-import { t } from '../../strings/en'
+import { t } from '../../strings'
 
 /** The ▶ square play control (DESIGN.md §6.3, §6.9). 48×48 hit area. */
 export function PlayButton({ onClick, label = t.ledger.play, dark = false, disabled = false }:

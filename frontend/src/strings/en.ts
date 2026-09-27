@@ -1,5 +1,6 @@
-// Every user-facing UI string (CLAUDE.md §2, DESIGN.md §9). The UI ships in English this build;
-// another language is a new file with the same shape. Two-line headings are [line1, line2].
+// Every user-facing UI string, English (CLAUDE.md §2, DESIGN.md §9). Each other UI language is a file
+// with exactly the same keys (strings/index.ts checks it at compile time; GOAL_2.0 P5.2).
+// Two-line headings are [line1, line2].
 
 export const en = {
   brand: 'KHATA',
@@ -8,6 +9,7 @@ export const en = {
   nav: {
     home: 'Home',
     ledger: 'Ledger',
+    dashboard: 'Dashboard',
     parties: 'Parties',
     scan: 'Scan',
     review: 'Review',
@@ -49,7 +51,7 @@ export const en = {
     join: 'Join with code',
     shopName: 'Shop name',
     code: '6-character invite code',
-    languageHelp: 'Spoken answers and read-backs use this language. You can change it in Settings.',
+    languageHelp: 'Khata listens, speaks and shows its screens in this language. In Settings you can pick each of these separately.',
     next: 'Next',
     back: 'Back',
     createShop: 'Create shop',
@@ -79,7 +81,6 @@ export const en = {
     entry: ['Edit', 'entry.'],
     scan: ['What kind', 'of bill?'],
     settings: ['Your', 'settings.'],
-    logOut: 'Log out',
   },
 
   status: {
@@ -427,12 +428,12 @@ export const en = {
     party: 'Customer or supplier',
     date: 'Date',
     historyTitle: 'History',
-    you: 'You',
-    another: 'Another member',
     actions: { create: 'Created', edit: 'Edited', confirm: 'Confirmed', void: 'Voided' } as Record<string, string>,
     fields: {
       amount_paise: 'Amount', type: 'Type', party: 'Party', occurred_on: 'Date', note: 'Note', status: 'Status',
     } as Record<string, string>,
+    addedBy: (name: string) => `Added by ${name}`,
+    confirmedBy: (name: string) => `Confirmed by ${name}`,
     voidEntry: 'Void entry',
     voidConfirmTitle: 'Void this entry?',
     voidConfirmBody: 'It stops counting in balances and totals. It stays in the history and can’t be edited after.',
@@ -444,8 +445,21 @@ export const en = {
   },
 
   settings: {
-    language: 'My language',
-    languageHelp: 'Spoken read-backs and answers use this language.',
+    // GOAL_2.0 P5.1: a language for each aspect, chosen separately.
+    languages: {
+      title: 'Languages',
+      help: 'Choose each one separately. Changes apply at once.',
+      ui: 'On-screen text',
+      uiHelp: 'Buttons, labels and messages.',
+      speak: 'I speak in',
+      speakHelp: 'The language you talk to Khata in.',
+      auto: 'Detect automatically',
+      autoHelp: 'Khata works out which language you spoke.',
+      voice: 'Read-backs and answers in',
+      voiceHelp: 'What Khata says out loud.',
+      report: 'Summaries and reports in',
+      reportHelp: 'The weekly summary, tips, the daily briefing and PDF reports.',
+    },
     voice: 'Voice',
     voiceHelp: 'Tap a voice to hear it.',
     defaultVoice: 'Default',
@@ -456,6 +470,39 @@ export const en = {
     copied: 'Copied',
     logOut: 'Log out',
     shop: 'Shop',
+    name: 'My name',
+    nameHelp: 'Everyone in the shop sees this next to what you add or change.',
+    saveName: 'Save name',
+    nameSaved: 'Name saved.',
+    members: 'People in this shop',
+    roles: { owner: 'Owner', staff: 'Staff' } as Record<string, string>,
+    joined: (day: string) => `Joined ${day}`,
+    sameRights: 'Everyone in the shop can do the same things.',
+  },
+
+  // GOAL_2.0 P4: the activity feed.
+  activity: {
+    title: 'What happened',
+    empty: 'Nothing yet. Every entry added, changed, confirmed or voided shows up here, with who did it.',
+    verbs: { create: 'added', edit: 'changed', confirm: 'confirmed', void: 'voided' } as Record<string, string>,
+    line: (who: string, verb: string, what: string) => `${who} ${verb} ${what}`,
+    changed: (fields: string) => `(${fields})`,
+  },
+  // GOAL_2.0 P4.2: the toast when someone else in the shop adds an entry.
+  live: {
+    added: (who: string, what: string) => `${who} added ${what}`,
+    someone: 'Someone',
+    you: (name: string) => `${name} (you)`,
+    member: 'Member',
+  },
+  time: {
+    justNow: 'just now',
+    minsAgo: (n: number) => `${n} min ago`,
+    hoursAgo: (n: number) => `${n} h ago`,
+    yesterday: 'yesterday',
+  },
+  dashboard: {
+    heading: ['How the shop', 'is doing.'],
   },
 
   toast: {
@@ -477,8 +524,3 @@ export const en = {
     network: 'No internet. Entries can’t be saved right now.',
   },
 } as const
-
-export type Lang = keyof typeof en.languages
-export const LANG_ORDER: Lang[] = ['ta-IN', 'hi-IN', 'en-IN', 'te-IN', 'kn-IN', 'ml-IN']
-
-export const t = en

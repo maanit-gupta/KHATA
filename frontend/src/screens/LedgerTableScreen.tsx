@@ -10,9 +10,10 @@ import { Select } from '../components/ui/Select'
 import { StatusSquare } from '../components/ui/StatusSquare'
 import { formatDay } from '../lib/dates'
 import { ENTRY_TYPES, useParties } from '../lib/ledger'
+import { shown } from '../lib/members'
 import { downloadCsv, PRESETS, useLedgerPage, type LedgerRow, type Preset } from '../lib/ledgerTable'
 import { formatPaise } from '../lib/money'
-import { t } from '../strings/en'
+import { t } from '../strings'
 
 const L = t.table
 const STATUSES = ['confirmed', 'pending', 'voided'] as const
@@ -60,7 +61,7 @@ export function LedgerTableScreen() {
     const isDefault = next.length === 2 && next.includes('confirmed') && next.includes('pending')
     set({ status: isDefault || next.length === 0 ? null : next.join(',') })
   }
-  const shown = (s: string) => (statuses.length ? statuses.includes(s) : s !== 'voided')
+  const isShown = (s: string) => (statuses.length ? statuses.includes(s) : s !== 'voided')
 
   const data = q.data
   const anyFilter = [...params.keys()].some((k) => k !== 'page')
@@ -92,12 +93,12 @@ export function LedgerTableScreen() {
         <Select label={L.source} value={params.get('source') ?? ''} onChange={(e) => set({ source: e.target.value || null })}
           options={[{ value: '', label: L.allSources }, ...['voice', 'receipt', 'manual'].map((k) => ({ value: k, label: L.sources[k] }))]} />
         <Select label={L.member} value={params.get('member') ?? ''} onChange={(e) => set({ member: e.target.value || null })}
-          options={[{ value: '', label: L.allMembers }, ...(data?.members ?? []).map((m) => ({ value: m.user_id, label: m.name }))]} />
+          options={[{ value: '', label: L.allMembers }, ...(data?.members ?? []).map((m) => ({ value: m.user_id, label: shown(m.name) }))]} />
         <fieldset>
           <legend className="mb-2 t-field-label">{L.show}</legend>
           <div className="flex flex-wrap gap-2">
             {STATUSES.map((s) => (
-              <SegmentChip key={s} selected={shown(s)} onClick={() => toggleStatus(s)}>{t.status[s]}</SegmentChip>
+              <SegmentChip key={s} selected={isShown(s)} onClick={() => toggleStatus(s)}>{t.status[s]}</SegmentChip>
             ))}
           </div>
         </fieldset>
@@ -182,7 +183,7 @@ function Table({ rows }: { rows: LedgerRow[] }) {
                 <td className="py-3 pr-4 t-body">{t.entryTypes[r.type]}</td>
                 <td className="py-3 pr-4 text-right t-body tabular-nums whitespace-nowrap">{formatPaise(r.amount_paise)}</td>
                 <td className="py-3 pr-4 t-body">{L.sources[r.source]}</td>
-                <td className="py-3 pr-4 t-body">{r.added_by ?? ''}</td>
+                <td className="py-3 pr-4 t-body">{shown(r.added_by)}</td>
                 <td className="py-3 t-body whitespace-nowrap">
                   <span className="inline-flex items-center gap-2"><StatusSquare status={r.status} size={12} />{t.status[r.status]}</span>
                 </td>
