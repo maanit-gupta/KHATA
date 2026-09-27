@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
 import { useRefreshSummary, useSummary, type Period } from '../lib/reports'
+import { SkeletonRows } from './ui/Skeleton'
 import { t } from '../strings'
 import { Button } from './ui/Button'
 import { SegmentChip } from './ui/Chip'
@@ -28,7 +29,7 @@ export function SummaryCard() {
         </div>
       </div>
       {q.error && <p className="t-body" role="alert">{q.error.message}</p>}
-      {!s && !q.error && <p className="t-body" role="status">{t.errors.loading}</p>}
+      {!s && !q.error && <SkeletonRows rows={3} />}
       {s && (
         <>
           <p className="t-body-lg" lang={s.lang} aria-live="polite" data-testid="summary-text">{s.summary}</p>

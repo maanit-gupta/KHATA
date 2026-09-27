@@ -13,6 +13,7 @@ import { confirmEntry, ENTRY_TYPES, reasonText, useLedgerMutation, voidEntry, ty
 import { shown } from '../lib/members'
 import { openBill, playRecording } from '../lib/media'
 import { formatPaise } from '../lib/money'
+import { SkeletonRows } from '../components/ui/Skeleton'
 import { t } from '../strings'
 
 const PARTY_OPTIONAL: EntryType[] = ['cash_sale', 'purchase_paid']
@@ -26,6 +27,7 @@ export function EntryScreen() {
     <div className="grid gap-8 gutter-x py-10 app:grid-cols-3 app:py-16">
       <div className="flex flex-col gap-4">
         <H2 lines={t.entry.heading} as="h1" />
+        {!q.data && !q.error && <SkeletonRows rows={3} />}
         {q.data && <Summary entry={q.data.entry} />}
         {q.data?.heard && (
           <Disclosure label={t.ledger.whatIHeard} testId="what-i-heard">

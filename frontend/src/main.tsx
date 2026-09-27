@@ -4,6 +4,8 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router'
 import { SessionProvider } from './auth/session'
 import './index.css'
+import { keepFocusedFieldVisible } from './lib/mobile'
+import { unlockAudioOnFirstTap } from './lib/player'
 import { Root } from './Root'
 import { loadUiLang, savedUiLang } from './strings'
 
@@ -27,6 +29,9 @@ function render() {
     </StrictMode>,
   )
 }
+
+keepFocusedFieldVisible()
+unlockAudioOnFirstTap()
 
 // Before anyone signs in, use the language this device used last (the login page included).
 loadUiLang(savedUiLang()).catch(() => {}).finally(render)

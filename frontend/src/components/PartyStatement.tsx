@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { formatDay } from '../lib/dates'
 import { balanceText } from '../lib/ledger'
 import { signed, useStatement, type Statement } from '../lib/statement'
+import { SkeletonRows } from './ui/Skeleton'
 import { t } from '../strings'
 import { ButtonLink } from './ui/Button'
 import { Field } from './ui/Field'
@@ -65,6 +66,7 @@ export function PartyStatement({ partyId, name }: { partyId: string; name: strin
       </div>
       <p className="t-body">{S.help}</p>
       {q.error && <p className="t-body-lg" role="alert">{q.error.message}</p>}
+      {!q.data && !q.error && <SkeletonRows rows={3} />}
       {q.data && (q.data.rows.length || q.data.from
         ? <StatementTable name={name} st={q.data} />
         : <p className="border-t border-ink pt-4 t-body-lg">{S.empty}</p>)}

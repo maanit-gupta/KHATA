@@ -42,6 +42,15 @@ are listed at the end with their evidence.
   (`npx tsc -b` fails if a key is missing or extra). Screenshots in en/hi/ta:
   `artifacts/screens/P5-languages/`. *Why not Claude:* the goal forbids spending Sarvam calls on
   UI text, and only a native speaker can judge what reads naturally in a shop.
+- **N-013 Let password-reset links land on the app, and try it on a real iPhone.** The reset flow
+  (GOAL_2.0 P8) sends Supabase's email with a link to `<site>/reset`. **Do:** Supabase → Authentication
+  → URL Configuration: set Site URL to the Vercel address and add `https://<vercel-domain>/reset` and
+  `http://localhost:5173/reset` to Redirect URLs. Supabase's built-in mailer allows only a few emails
+  an hour; for real use, add SMTP under Authentication → Emails. Then, on an iPhone (Safari): hold
+  ADD and speak an entry (the recording is MP4), and check the read-back plays aloud (the app unlocks
+  audio on the first tap). *Why not Claude:* auth settings are project configuration outside the
+  allowed additive migrations, and no real device is available here (the MP4 path and the audio
+  unlock are covered by tests with a recorded Safari file and an instrumented browser).
 - **N-009 Pick how Hindi and Tamil read-backs are translated.** `artifacts/tts-compare/` has 6
   MP3s: the same three read-backs in Hindi and Tamil, translated three ways (Mayura colloquial,
   which the app uses now; Mayura formal; sarvam-translate). `report.md` there shows every text and

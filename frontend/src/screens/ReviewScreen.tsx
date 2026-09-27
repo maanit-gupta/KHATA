@@ -8,6 +8,8 @@ import { Toast } from '../components/ui/Toast'
 import { balanceText, confirmEntry, reasonText, useLedgerMutation, useParties, type Entry, type Party } from '../lib/ledger'
 import { formatPaise } from '../lib/money'
 import { keepParty, mergeParty, renameParty, useReview, type ReviewRow } from '../lib/review'
+import { PartyError } from '../components/PartyError'
+import { SkeletonRows } from '../components/ui/Skeleton'
 import { t } from '../strings'
 import { Screen } from './AppShell'
 
@@ -23,6 +25,7 @@ export function ReviewScreen() {
   return (
     <Screen title={t.screens.review}>
       {review.error && <p className="t-body-lg" role="alert">{review.error.message}</p>}
+      {!review.data && !review.error && <SkeletonRows rows={4} />}
       {review.data && rows.length === 0 && <p className="t-body-lg">{t.review.empty}</p>}
       <div className="flex flex-col gap-12">
         {entries.length > 0 && (
@@ -135,7 +138,7 @@ function NewParty({ party, onNotice }: { party: Party; onNotice: (s: string) => 
           <Button variant="text" className="self-start" onClick={() => setMode('idle')}>{t.review.cancel}</Button>
         </div>
       )}
-      {error && <p className="t-body" role="alert">{error.message}</p>}
+      <PartyError error={error} />
     </li>
   )
 }

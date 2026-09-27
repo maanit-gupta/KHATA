@@ -5,6 +5,7 @@ import type { Entry } from '../lib/ledger'
 import { formatDay } from '../lib/dates'
 import { nameOf, useMembers } from '../lib/members'
 import { formatPaise } from '../lib/money'
+import { SkeletonRows } from './ui/Skeleton'
 import { t } from '../strings'
 import { Row } from './ui/Row'
 
@@ -17,7 +18,7 @@ export function EntryList({ entries, empty, revealKey, aside }:
   const members = useMembers().data?.members
   // GOAL_2.0 P4.3: who added it, on every row.
   const byLabel = (e: Entry) => { const n = nameOf(members, e.created_by); return n ? ` · ${t.entry.addedBy(n)}` : '' }
-  if (!entries) return null
+  if (!entries) return <SkeletonRows />
   if (!entries.length) return <>{empty}</>
   return (
     <div className="border-b border-ink">

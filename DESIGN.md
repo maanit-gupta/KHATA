@@ -95,6 +95,11 @@ case for those scripts, so don't fake it.
 - Fields: Email, Password, plus Name on signup. Submit is the inverse full-width button:
   "LOG IN" or "CREATE ACCOUNT".
 - A text toggle underneath switches between the two modes.
+- Password fields carry a SHOW / HIDE text button on the same underline (48px target). Login adds
+  "Forgot your password?", which opens the same split with one Email field and SEND THE LINK; the
+  emailed link lands on `/reset` (New password + SAVE THE NEW PASSWORD). When a session ends
+  mid-action, the login form opens with the line "Your session ended. Log in again and you'll be
+  back where you were." and, after logging in, returns to that page.
 
 ### 6.2 Onboarding (same split)
 - Step 1: two chips, CREATE A SHOP / JOIN WITH CODE, then the Shop name field or the 6-character
@@ -168,12 +173,62 @@ The H2 "Needs / a look." Three groups separated by hairlines: pending entries, n
 - VOID ENTRY is a text button at the bottom that opens a confirmation.
 
 ### 6.12 Settings
-Rows: My language (opens the §6.2 picker), Voice (plays a sample on selection), Shop invite code
-(Amount style, with a COPY chip), LOG OUT.
+**Languages** (GOAL_2.0 P5): four rows, each opening a radio list of the six languages written in
+their own script: ON-SCREEN TEXT, I SPEAK IN (with a "Detect automatically" switch marked by a
+status square), READ-BACKS AND ANSWERS IN, SUMMARIES AND REPORTS IN. A tap saves at once; changing
+the on-screen text re-renders the app in that language. Then Voice (the list follows the read-back
+language; plays a sample on selection), Shop invite code (Amount style, with a COPY chip), LOG OUT,
+MY NAME (underline field + SAVE NAME), and PEOPLE IN THIS SHOP (hairline rows: name, "(you)" after
+your own, role on the right, joined date as a label).
+In an Indic UI language, letter-spacing is 0 and label/heading line-height is raised so vowel signs
+are never clipped; UPPERCASE applies to Latin text only.
+
+### 6.12a Ledger table (`/app/ledger`, nav chip LEDGER)
+Grid: filters in the left third (period chips, date fields, search, type / party / source / added-by
+selects, SHOW status chips, CLEAR FILTERS text button), the table in the right two thirds. Totals
+row above the table as a four-cell ink-hairline grid (`gap-px` on `--ink`), each cell a label and an
+Amount. The table: hairline rows, `<th scope>` headers in Label style, amounts right-aligned with
+tabular figures, a status square beside each status, voided rows struck through. Below 900px the
+table scrolls sideways inside a focusable region; the page never does. Pager: count + page label on
+the left, PREVIOUS / NEXT outline buttons on the right. ADD BY HAND opens the quick-add form (type
+chips, decimal keypad, name suggestions as chips) above the table; DOWNLOAD CSV is a text button.
+
+### 6.12b Dashboard (`/app/dashboard`, nav chip DASHBOARD)
+Full width under the title (the one app screen that doesn't use the 1/3 + 2/3 split, because it is
+made of wide tables). From top: TODAY'S BRIEFING card (`--ink`, white text, ▶ square play button,
+CLOSE text button; never autoplays) → Today strip (four hairline-grid cells: label, Amount, a body
+line "+₹100 vs 20 Sep") → IN SHORT card (`--cyan` panel: H3, TODAY / THIS WEEK chips, the summary in
+Body-lg, tips as hairline rows with a pending square, a small line saying the numbers were checked,
+WRITE IT AGAIN text button, "Printable report →") → WHO OWES ME (3/5 width: bucket totals as a
+four-cell hairline grid with status squares 0–7 confirmed, 8–30 and 31–60 pending, 60+ voided; then
+the table, names underlined as links to the statement) beside WHAT I OWE (2/5) → THE LAST 30 DAYS
+(three charts, see below) → DAY BY DAY (sortable register; the active column is underlined with a
+rotated → for direction; Mon–Sun subtotal rows on `--mist`; the net-cash formula as body text under
+the table) → Top customers (two small hairline tables) beside WHAT HAPPENED (the activity feed:
+status square, "Priya added Cash sale · ₹300", relative time as a label).
+**Charts** (recharts): ink and cyan only, flat. Lines are 2px ink (a second series dashed 6/4), area
+fills flat `--cyan` under an ink line, bars `--cyan` with a 1px ink outline and square corners.
+Axes are 1px ink hairlines, horizontal grid lines `--mist`, ticks 12px ink. Markers are squares
+(filled ink or cyan with an ink edge), drawn only on days that have money. No gradients, no shadows,
+no rounded bars, no animation. Each chart has a caption in Label style and a screen-reader summary
+that points to the day-by-day table for the numbers.
+
+### 6.12c Report print page (`/app/report`)
+On screen: a controls strip (period chips, from/to dates, DOWNLOAD PDF primary button, back link,
+a line on how to save as PDF) that is hidden in print, then the report itself: "KHATA · shop name"
+label, H2 "Shop / report.", the range, the IN SHORT box (1px ink border, tips with pending squares),
+Totals (hairline grid of seven figures), static charts at a fixed width, the day-by-day register,
+WHO OWES ME and WHAT I OWE tables, and a footer label "shop · range · Generated by KHATA on …".
+Print: A4 (`@page` 14mm × 12mm margins), app header hidden, the same typography scaled to points,
+rows and figures never split across pages, scroll boxes printed at full width. A party statement
+(`?party=`) prints the §6.9 statement table under "Statement: name".
 
 ### 6.13 States
+- **Loading:** flat skeletons: hairline rows with `--mist` blocks (a square, a bar, a short bar), or
+  one `--mist` block the size of a chart. No shimmer, no gradient, no spinner.
 - **Empty ledger:** "Hold ADD and say what happened, / like 'Ramesh took 250 on credit'."
-  with PixelSquares.
+  with PixelSquares. Every other screen's empty state also says what to do next (the dashboard:
+  "This fills in as you add entries…").
 - **Offline:** a full-screen `--ink` overlay with white H2 "No internet. / Entries can't be saved
   right now." and a RETRY button.
 - **Errors:** always a plain sentence saying what failed and what to do next. Never apologize.

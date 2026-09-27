@@ -6,6 +6,32 @@
  */
 let current: { audio: HTMLAudioElement; url: string | null } | null = null
 
+// iOS Safari only lets a page play audio from an element that first played inside a tap. Read-backs
+// arrive after a network round trip (outside the tap), so the app keeps ONE element, plays a silent
+// clip on it at the first tap anywhere, and reuses it for every clip after (GOAL_2.0 P8).
+let element: HTMLAudioElement | null = null
+const SILENCE = 'data:audio/mpeg;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tQxAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAACAAABhgC7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7//////////////////////////////////////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAAAAYYoRBqpAAAAAAD/+xDEAAPAAAGkAAAAIAAANIAAAARMQU1FMy4xMDBVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV'
+export let audioUnlocked = false
+
+function sharedElement(): HTMLAudioElement {
+  element ??= new Audio()
+  return element
+}
+
+export function unlockAudioOnFirstTap() {
+  const unlock = () => {
+    const el = sharedElement()
+    if (!audioUnlocked && !current) {
+      el.src = SILENCE
+      el.play().then(() => { audioUnlocked = true }).catch(() => undefined)
+    }
+    window.removeEventListener('pointerdown', unlock, true)
+    window.removeEventListener('keydown', unlock, true)
+  }
+  window.addEventListener('pointerdown', unlock, true)
+  window.addEventListener('keydown', unlock, true)
+}
+
 export function stopPlayback() {
   if (!current) return
   current.audio.pause()
@@ -16,7 +42,8 @@ export function stopPlayback() {
 
 function start(src: string, objectUrl: string | null): Promise<void> {
   stopPlayback()
-  const audio = new Audio(src)
+  const audio = sharedElement()
+  audio.src = src
   current = { audio, url: objectUrl }
   return audio.play()
 }

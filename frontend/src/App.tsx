@@ -4,7 +4,7 @@ import { PublicOnly, RequireSessionWithoutShop, RequireShop } from './auth/guard
 import { OfflineOverlay } from './components/OfflineOverlay'
 import { TransitionRoutes } from './components/ui/PageTransition'
 import { AppShell } from './screens/AppShell'
-import { AuthScreen } from './screens/AuthScreen'
+import { AuthScreen, ResetScreen } from './screens/AuthScreen'
 import { LedgerScreen } from './screens/LedgerScreen'
 import { t } from './strings'
 
@@ -45,9 +45,11 @@ export function App() {
         <Route path="/" element={<LandingScreen />} />
         <Route path="/about" element={<AboutScreen />} />
         <Route element={<PublicOnly />}>
-          <Route path="/login" element={<AuthScreen mode="login" />} />
-          <Route path="/signup" element={<AuthScreen mode="signup" />} />
+          <Route path="/login" element={<AuthScreen key="login" mode="login" />} />
+          <Route path="/signup" element={<AuthScreen key="signup" mode="signup" />} />
+          <Route path="/forgot" element={<AuthScreen key="forgot" mode="forgot" />} />
         </Route>
+        <Route path="/reset" element={<ResetScreen />} />
         <Route element={<RequireSessionWithoutShop />}>
           <Route path="/onboarding" element={<OnboardingScreen />} />
         </Route>

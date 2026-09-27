@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { api } from './api'
 import type { Entry } from './ledger'
+import { formatDay } from './dates'
 import { uiLang } from '../strings'
 
 export type HistoryRow = {
@@ -22,8 +23,11 @@ export const useEntry = (id: string) =>
 export const patchEntry = ({ id, body }: { id: string; body: Record<string, unknown> }) =>
   api<Entry>(`/entries/${id}`, { method: 'PATCH', body: JSON.stringify(body) })
 
-/** Audit timestamps shown in shop time (CLAUDE.md §9b), in the on-screen language with 0–9 digits. */
+/** Audit timestamps in shop time (CLAUDE.md §9b): "26 Sep 2026, 9:35 am" (GOAL_2.0 P8), month names
+ * in the on-screen language, 0–9 digits. */
 export function formatWhen(iso: string) {
-  return new Intl.DateTimeFormat(uiLang(), { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Kolkata', numberingSystem: 'latn' })
-    .format(new Date(iso))
+  const d = new Date(iso)
+  const day = new Date(d.getTime() + 5.5 * 3600_000).toISOString().slice(0, 10)
+  const time = new Intl.DateTimeFormat(uiLang(), { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Kolkata', numberingSystem: 'latn' }).format(d)
+  return `${formatDay(day)}, ${time}`
 }

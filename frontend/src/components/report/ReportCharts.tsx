@@ -21,10 +21,11 @@ export function ReportCharts({ data }: { data: ReportData }) {
   const ticks = days.filter((_, i) => i % step === 0).map((d) => d.day)
   const expenses = data.expenses.map((r) => ({ ...r, name: t.categories.names[r.category] ?? r.category }))
   return (
-    <div className="report-charts grid gap-6">
+    <div className="report-charts grid min-w-0 gap-6 overflow-x-auto" role="region" tabIndex={0} aria-label={`${D.salesVsCollections} · ${t.reports.expensesTitle}`}>
       {days.length > 1 && (
         <figure className="flex flex-col gap-2" data-testid="report-chart-sales">
           <figcaption className="t-label">{D.salesVsCollections} · {D.sales} ■ · {D.collections} □</figcaption>
+          <div role="img" aria-label={D.chartSummary(D.salesVsCollections, formatShortDay(data.from), formatShortDay(data.to))}>
           <LineChart width={W} height={H} data={days} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
             <CartesianGrid vertical={false} stroke={MIST} />
             <XAxis dataKey="day" ticks={ticks} tickFormatter={(v: string) => formatShortDay(v)} tick={TICK} axisLine={axis} tickLine={false} />
@@ -32,16 +33,19 @@ export function ReportCharts({ data }: { data: ReportData }) {
             <Line type="linear" dataKey="cash_sales_paise" stroke={INK} strokeWidth={2} dot={false} isAnimationActive={false} />
             <Line type="linear" dataKey="collected_paise" stroke={INK} strokeWidth={2} strokeDasharray="6 4" dot={false} isAnimationActive={false} />
           </LineChart>
+          </div>
         </figure>
       )}
       {expenses.length > 0 && (
         <figure className="flex flex-col gap-2" data-testid="report-chart-expenses">
           <figcaption className="t-label">{t.reports.expensesTitle}</figcaption>
+          <div role="img" aria-label={D.chartSummary(t.reports.expensesTitle, formatShortDay(data.from), formatShortDay(data.to))}>
           <BarChart width={W} height={Math.max(80, 36 * expenses.length)} data={expenses} layout="vertical" margin={{ top: 0, right: 16, bottom: 0, left: 0 }}>
             <XAxis type="number" tickFormatter={rupeesTick} tick={TICK} axisLine={axis} tickLine={false} />
             <YAxis type="category" dataKey="name" tick={TICK} axisLine={axis} tickLine={false} width={160} />
             <Bar dataKey="total_paise" fill={CYAN} stroke={INK} strokeWidth={1} radius={0} isAnimationActive={false} />
           </BarChart>
+          </div>
         </figure>
       )}
     </div>

@@ -7,12 +7,14 @@ import { Button } from '../components/ui/Button'
 import { SegmentChip } from '../components/ui/Chip'
 import { Field } from '../components/ui/Field'
 import { H2 } from '../components/ui/H2'
+import { ScrollBox } from '../components/ui/ScrollBox'
 import { StatusSquare } from '../components/ui/StatusSquare'
 import { addDays, formatDay, formatShortDay, todayIst } from '../lib/dates'
 import { formatWhen } from '../lib/entry'
 import { formatPaise } from '../lib/money'
 import { useReportData, useSummary, type Period, type ReportData } from '../lib/reports'
 import { useStatement } from '../lib/statement'
+import { SkeletonRows } from '../components/ui/Skeleton'
 import { t } from '../strings'
 
 const PERIODS: Period[] = ['day', 'week', 'month']
@@ -121,7 +123,7 @@ function PeriodReport({ period, from, to, current, shop }: { period: Period; fro
           <Dues d={d} />
         </>
       )}
-      {!d && !data.error && <p className="t-body-lg" role="status">{t.errors.loading}</p>}
+      {!d && !data.error && <SkeletonRows rows={8} />}
       <Footer shop={shop} from={from} to={to} />
     </article>
   )
@@ -174,10 +176,12 @@ function Register({ d }: { d: ReportData }) {
   return (
     <section className="flex flex-col gap-3">
       <h2 className="t-h3">{R.title}</h2>
-      <table className="w-full border-collapse text-left" data-testid="report-register">
+      <ScrollBox label={R.caption}>
+      <table className="w-full min-w-[720px] border-collapse text-left" data-testid="report-register">
         <thead><tr className="border-b border-ink"><th scope="col" className={TH}>{R.cols.day}</th>{cols.map(([k, l]) => <th key={k} scope="col" className={`${TH} text-right`}>{l}</th>)}</tr></thead>
         <tbody>{rows}</tbody>
       </table>
+      </ScrollBox>
     </section>
   )
 }
@@ -194,7 +198,8 @@ function Aging({ d }: { d: ReportData }) {
         ))}
       </dl>
       {d.aging.rows.length === 0 ? <p className="t-body">{A.empty}</p> : (
-        <table className="w-full border-collapse text-left" data-testid="report-aging">
+        <ScrollBox label={A.caption}>
+        <table className="w-full min-w-[600px] border-collapse text-left" data-testid="report-aging">
           <thead><tr className="border-b border-ink">{[A.cols.name, A.cols.balance, A.cols.oldest, A.cols.lastPayment, A.cols.bucket].map((c, i) => <th key={c} scope="col" className={`${TH} ${i === 1 ? 'text-right' : ''}`}>{c}</th>)}</tr></thead>
           <tbody>
             {d.aging.rows.map((r) => (
@@ -208,6 +213,7 @@ function Aging({ d }: { d: ReportData }) {
             ))}
           </tbody>
         </table>
+        </ScrollBox>
       )}
     </section>
   )
@@ -219,7 +225,8 @@ function Dues({ d }: { d: ReportData }) {
     <section className="flex flex-col gap-3 avoid-break">
       <h2 className="t-h3">{U.title}</h2>
       {d.dues.rows.length === 0 ? <p className="t-body">{U.empty}</p> : (
-        <table className="w-full border-collapse text-left" data-testid="report-dues">
+        <ScrollBox label={U.caption}>
+        <table className="w-full min-w-[480px] border-collapse text-left" data-testid="report-dues">
           <thead><tr className="border-b border-ink">{[U.cols.name, U.cols.owed, U.cols.lastPayment, U.cols.days].map((c, i) => <th key={c} scope="col" className={`${TH} ${i === 1 || i === 3 ? 'text-right' : ''}`}>{c}</th>)}</tr></thead>
           <tbody>
             {d.dues.rows.map((r) => (
@@ -232,6 +239,7 @@ function Dues({ d }: { d: ReportData }) {
             ))}
           </tbody>
         </table>
+        </ScrollBox>
       )}
     </section>
   )

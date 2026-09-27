@@ -32,12 +32,25 @@ export const en = {
     toSignup: 'New here? Create an account',
     toLogin: 'Have an account? Log in',
     working: 'Working…',
+    // GOAL_2.0 P8: show password, password reset, and coming back after the session ends.
+    show: 'Show',
+    hide: 'Hide',
+    showPassword: 'Show the password',
+    forgot: 'Forgot your password?',
+    forgotHelp: 'Enter your email. We’ll send a link to set a new password.',
+    sendLink: 'Send the link',
+    linkSent: 'If an account exists for that email, a link to set a new password is on its way. Check your inbox.',
+    newPassword: 'New password',
+    setPassword: 'Save the new password',
+    resetExpired: 'This link has expired or was already used. Ask for a new one.',
+    askAgain: 'Send a new link',
+    sessionEnded: 'Your session ended. Log in again and you’ll be back where you were.',
     errors: {
       required: 'This field is required.',
       email: 'Enter an email address like name@example.com.',
       passwordShort: 'Use at least 6 characters.',
-      badLogin: 'That email and password don’t match. Check both and try again.',
-      exists: 'An account with this email already exists. Log in instead.',
+      badLogin: 'Wrong email or password. Check both and try again.',
+      exists: 'An account with this email exists. Log in instead.',
       emailDisabled: 'Email login is turned off for this app. Ask the person who set it up.',
       generic: 'Could not reach the server. Check your internet and try again.',
     },
@@ -389,6 +402,16 @@ export const en = {
       help: '+ means they owe the shop more; − means less. Confirmed entries only.',
     },
     entriesTitle: 'Entries',
+    // GOAL_2.0 P8: editing a party.
+    edit: 'Edit name or kind',
+    closeEdit: 'Close',
+    name: 'Name',
+    kind: 'Kind',
+    save: 'Save',
+    saved: 'Saved.',
+    kindLocked: (kind: string) => `It has entries, so it stays a ${kind}: switching would change what every one of them means.`,
+    exists: (name: string) => `Already exists: ${name}.`,
+    openIt: 'Open it',
   },
 
   week: {
@@ -510,6 +533,7 @@ export const en = {
   // GOAL_2.0 P6: every number here comes from SQL.
   dashboard: {
     heading: ['How the shop', 'is doing.'],
+    emptyShop: 'This fills in as you add entries. Hold ADD on Home and say one, scan a bill, or add one by hand in the Ledger.',
     today: 'Today',
     vs: (delta: string, day: string) => `${delta} vs ${day}`,
     same: (day: string) => `Same as ${day}`,
