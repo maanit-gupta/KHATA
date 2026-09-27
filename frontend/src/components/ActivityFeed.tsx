@@ -5,6 +5,7 @@ import { relativeTime } from '../lib/dates'
 import type { EntryType } from '../lib/ledger'
 import { shown } from '../lib/members'
 import { formatPaise } from '../lib/money'
+import { SkeletonRows } from './ui/Skeleton'
 import { t } from '../strings'
 import { StatusSquare, type Status } from './ui/StatusSquare'
 
@@ -22,6 +23,7 @@ export function ActivityFeed() {
     <section aria-labelledby="activity-title" className="flex flex-col gap-4">
       <h2 id="activity-title" className="t-h3">{t.activity.title}</h2>
       {q.error && <p className="t-body-lg" role="alert">{q.error.message}</p>}
+      {!q.data && !q.error && <SkeletonRows rows={5} />}
       {q.data && q.data.length === 0 && <p className="border-t border-ink pt-4 t-body-lg">{t.activity.empty}</p>}
       {q.data && q.data.length > 0 && (
         <ol className="border-b border-ink" data-testid="activity-feed">

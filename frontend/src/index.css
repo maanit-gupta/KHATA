@@ -27,7 +27,7 @@
     box-shadow: none;
     font-weight: 400; /* nothing is bold, including h1–h6, b, strong, th */
   }
-  html { -webkit-text-size-adjust: 100%; }
+  html { -webkit-text-size-adjust: 100%; scroll-padding-top: calc(72px + env(safe-area-inset-top)); scroll-padding-bottom: 96px; }
   body {
     margin: 0;
     background: var(--paper);
@@ -117,5 +117,6 @@
   .report .t-label { font-size: 8.5pt; }
   .report table { font-size: 9pt; }
   .report tr, .report figure, .avoid-break { break-inside: avoid; }
+  .report [role=region] { overflow: visible !important; }
   .report h2, .report h3 { break-after: avoid; }
 }

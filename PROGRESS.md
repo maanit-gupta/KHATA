@@ -85,6 +85,41 @@
 - [x] **P7.5 Q&A tools** `get_daily_register(from, to)` and `get_credit_aging()` (read-only, rupees).
 - AC: `backend/tests/test_reports.py` (30): every rule fires and stays silent at its edge, ranking; a fabricated number in the summary and in a tip → templates; cache hit / miss on changed facts / refresh refused then allowed after 5 min; per-language cache; week and month periods; report data range + limits; briefing text, both caches, report-language voice, ≤ 700 chars; both Q&A tools. Isolation cases for the 5 new routes and the 006 functions. `e2e/reports.spec.ts` (7) incl. **`page.pdf()` in Tamil and Hindi** (`artifacts/reports/report-ta.pdf`, `report-hi.pdf`, print renders beside them); dashboard + report added to the a11y walk. **Live briefing** on the seeded shop through the real UI: Hindi (241 chars, 262 kB MP3, played, replay from storage) and Tamil (236 chars, 331 kB, played, replay cached); `artifacts/briefing/` (MP3s, screenshots, live.json). 8 Sarvam + 2 Groq calls. The seeded shop, its files and user were deleted afterwards, as was one throwaway test user an interrupted run had left.
 
+### P8 The missed-spec sweep
+Evidence is `e2e/sweep.spec.ts` (15) unless noted.
+- **Auth and session**
+  - [x] Token refresh before expiry: supabase-js `autoRefreshToken`, and `api()` renews a token that expires within 60 s before sending it (test: a session expiring in 30 s triggers `grant_type=refresh_token` before the first API call).
+  - [x] Session ends mid-action → login with "Your session ended…" → back to the same page, filters included (test: 401 during a manual save → `/login` → log in → `/app/ledger?type=expense`). Found and fixed on the way: `<Navigate state={{…}}>` re-navigated on every render (a new object each time) and blanked the page; the state is now memoised.
+  - [x] Password reset: "Forgot your password?" → `/forgot` (`resetPasswordForEmail`, same answer whether or not the account exists) → email link → `/reset` (new password, `updateUser`) → app; an expired link says so and offers a new one (3 tests). Owner: redirect URLs, N-013.
+  - [x] SHOW / HIDE on every password field (`aria-pressed`).
+  - [x] Messages: "Wrong email or password. Check both and try again.", "An account with this email exists. Log in instead." (all six languages).
+- **Mobile basics**
+  - [x] iOS Safari recording: MP4 is sent as-is (run 1; `backend/tests/test_voice_entry.py` with a recorded Safari file; `e2e/stale.spec.ts` mislabelled-MP4 case). Playback: one shared audio element unlocked with silence on the first tap and reused for every clip (test: the first `play()` is the silent unlock, and every later clip plays on that same element). Real-device check: N-013.
+  - [x] Decimal keypad on every amount field (quick add, entry edit, bill total; tests here and in `scan.spec.ts`).
+  - [x] Forms above the keyboard: a focused field is scrolled to the middle of what stays visible when the keyboard shrinks the viewport (`lib/mobile.ts`), plus `scroll-padding` for the fixed header.
+  - [x] Safe areas: `viewport-fit=cover`; the fixed header pads `env(safe-area-inset-top)` (and content below it follows); toasts pad `env(safe-area-inset-bottom)`.
+  - [x] No sideways page scroll: 15 routes at 320 and 390 px (test). It caught the report page (fixed-width charts and wide tables): they now scroll inside focusable boxes on screen and print full width.
+- **Loading and empty states**
+  - [x] Flat skeletons (mist blocks on hairline rows, no gradient, no shimmer animation) on Home's list, the ledger table, dashboard (strip, tables, charts), parties, party statement, review, entry, activity feed, summary card and report (test checks presence, no background-image, no shimmer animation).
+  - [x] Every screen's empty state teaches the next step, including a new dashboard line (test walks Home, Ledger, Parties, Review, Dashboard on an empty shop).
+- **Correctness**
+  - [x] Voided struck through: the ledger table and every entry list (test); voided entries never appear in statements, balances or dashboard figures (backend tests).
+  - [x] Pending never counts: `party_balances`, every 004–006 function and view use confirmed entries only (`test_dashboard.py`, `test_ledger.py`).
+  - [x] A party with any entry keeps its kind: 409 `kind_in_use` with the reason (backend `test_sweep.py`); party detail's new EDIT NAME OR KIND disables the other kind and says why (e2e).
+  - [x] Duplicate names: the unique index's error now names the existing party (`party_id`, `party_name`), and the UI says "Already exists: Ramesh." with OPEN IT, on party detail and in Review's rename (backend + e2e).
+- **Formatting**
+  - [x] ₹ with en-IN grouping in lists, tables, totals, chart axes (`₹1.2K`), CSV header `Amount (₹)`.
+  - [x] Dates "26 Sep 2026" in IST everywhere; audit timestamps now "26 Sep 2026, 9:35 am" (they were "26 Sept 2026, …").
+  - [x] Relative times in the activity feed ("just now", "2 min ago", in the UI language).
+- **Resilience**
+  - [x] Cold start: "Waking the server…" after 3 s (`e2e/errors.spec.ts`).
+  - [x] A way forward after every Sarvam/Groq failure: a failed voice entry now offers ADD BY HAND right under the error (test updated in `errors.spec.ts`); bills → TYPE IT IN INSTEAD (P2); summaries fall back to templates; briefing shows its text if audio fails; questions say to ask again.
+- **Accessibility**
+  - [x] `<th scope>` on every new table; charts have text summaries (dashboard and report); controls ≥ 48 px: the a11y walk (axe WCAG 2.1 AA + target sizes + labels) now includes the dashboard and report pages and caught three small targets, fixed.
+- **Design**
+  - [x] New screens use radius 0, weight 400, status squares, hairline rows, no icon library (the only glyphs are → and ▶, as before).
+  - [x] DESIGN.md: §6.1 (show password, reset, session ended), §6.12 (Languages), §6.12a Ledger table, §6.12b Dashboard + chart style, §6.12c Report print page, §6.13 loading skeletons and empty states.
+
 ---
 
 # Run 1 (GOAL.md) — archived

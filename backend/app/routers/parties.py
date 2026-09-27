@@ -9,7 +9,7 @@ from pydantic import BaseModel, ConfigDict
 from ..auth import CurrentUser, current_user
 from ..db import PG_UNIQUE_VIOLATION, user_client
 from ..errors import AppError
-from ..ledger import (ENTRY_SELECT, PARTY_KINDS, check_uuid, entry_out, expected_party_kind, not_found,
+from ..ledger import (ENTRY_SELECT, PARTY_KINDS, check_uuid, entry_out, not_found,
                       parse_iso_date, require_membership)
 
 router = APIRouter()
@@ -124,10 +124,13 @@ def edit_party(party_id: str, body: PartyPatch, user: CurrentUser = Depends(curr
             raise AppError(422, "name_required", "Enter a name.")
         changes.update(display_name=name, name_latin=name.lower())  # CLAUDE.md §6.5: rename → name_latin
     if sent.get("kind") and sent["kind"] != current["kind"]:
-        types = {r["type"] for r in db.table("entries").select("type").eq("party_id", party_id).execute().data}
-        if any(expected_party_kind(t) not in (None, sent["kind"]) for t in types):
-            raise AppError(422, "kind_in_use",
-                           f"{current['display_name']} already has {current['kind']} entries, so the kind can't change.")
+        # GOAL_2.0 P8: a party with any entry (any status) keeps its kind. Switching would change what
+        # every one of those entries means (money owed to the shop would read as money the shop owes).
+        if db.table("entries").select("id").eq("party_id", party_id).limit(1).execute().data:
+            other = "supplier" if current["kind"] == "customer" else "customer"
+            raise AppError(409, "kind_in_use",
+                           f"{current['display_name']} has entries, so it stays a {current['kind']}: switching would "
+                           f"change what every one of them means. Add the {other} as a new name instead.")
         changes["kind"] = sent["kind"]
     if sent.get("needs_review") is not None:
         changes["needs_review"] = sent["needs_review"]
@@ -135,9 +138,14 @@ def edit_party(party_id: str, body: PartyPatch, user: CurrentUser = Depends(curr
         try:
             db.table("parties").update(changes).eq("id", party_id).execute()
         except APIError as e:
-            if e.code == PG_UNIQUE_VIOLATION:
-                raise AppError(409, "name_taken",
-                               "Someone with that name already exists. Merge the two instead.") from e
+            if e.code == PG_UNIQUE_VIOLATION:   # parties_unique_name: (shop, kind, name_latin)
+                kind = changes.get("kind", current["kind"])
+                latin = changes.get("name_latin", current["display_name"].lower())
+                same = (db.table("parties").select("id, display_name").eq("shop_id", current["shop_id"])
+                        .eq("kind", kind).eq("name_latin", latin).neq("id", party_id).limit(1).execute().data)
+                extra = {"party_id": same[0]["id"], "party_name": same[0]["display_name"]} if same else {}
+                name = same[0]["display_name"] if same else changes.get("display_name", current["display_name"])
+                raise AppError(409, "name_taken", f"{name} already exists. Open it, or merge the two.", extra) from e
             raise
     return _balance_row(db, party_id)
 

@@ -8,17 +8,41 @@ const API_URL = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
 export class ApiError extends Error {
   status: number
   code: string
-  constructor(status: number, code: string, message: string) {
+  /** Extra fields next to code and message, e.g. {party_id, party_name} on name_taken. */
+  details: Record<string, unknown>
+  constructor(status: number, code: string, message: string, details: Record<string, unknown> = {}) {
     super(message)
     this.status = status
     this.code = code
+    this.details = details
   }
 }
 
-export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
+const REFRESH_WITHIN_S = 60
+export const SESSION_ENDED_KEY = 'khata-session-ended'
+
+/** The access token, renewed first when it expires within a minute (GOAL_2.0 P8). */
+async function accessToken(): Promise<string | null> {
   const { data } = await supabase.auth.getSession()
+  let s = data.session
+  if (s?.expires_at && s.expires_at - Date.now() / 1000 < REFRESH_WITHIN_S) {
+    const r = await supabase.auth.refreshSession()
+    s = r.data.session ?? s
+  }
+  return s?.access_token ?? null
+}
+
+/** The server refused the login mid-action: sign out here, and remember why, so the login page says
+ * so and then returns the user to the page they were on (the route guards carry the path). */
+async function sessionEnded() {
+  try { sessionStorage.setItem(SESSION_ENDED_KEY, '1') } catch { /* private mode */ }
+  await supabase.auth.signOut({ scope: 'local' })
+}
+
+export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const token = await accessToken()
   const headers = new Headers(init.headers)
-  if (data.session) headers.set('Authorization', `Bearer ${data.session.access_token}`)
+  if (token) headers.set('Authorization', `Bearer ${token}`)
   if (init.body && !(init.body instanceof FormData)) headers.set('Content-Type', 'application/json')
 
   let resp: Response
@@ -31,17 +55,18 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   }
   const body = await resp.json().catch(() => null)
   if (!resp.ok) {
-    const err = body?.error
-    throw new ApiError(resp.status, err?.code ?? 'http_error', err?.message ?? t.auth.errors.generic)
+    const { code, message, ...details } = body?.error ?? {}
+    if (resp.status === 401 && token) await sessionEnded()
+    throw new ApiError(resp.status, code ?? 'http_error', message ?? t.auth.errors.generic, details)
   }
   return body as T
 }
 
 /** A file from the API (CSV export): the bytes and the server's filename. Same auth and errors. */
 export async function apiBlob(path: string): Promise<{ blob: Blob; filename: string | null }> {
-  const { data } = await supabase.auth.getSession()
+  const token = await accessToken()
   const headers = new Headers()
-  if (data.session) headers.set('Authorization', `Bearer ${data.session.access_token}`)
+  if (token) headers.set('Authorization', `Bearer ${token}`)
   let resp: Response
   try {
     resp = await fetch(`${API_URL}${path}`, { headers, cache: 'no-store' })
@@ -51,6 +76,7 @@ export async function apiBlob(path: string): Promise<{ blob: Blob; filename: str
   }
   if (!resp.ok) {
     const body = await resp.json().catch(() => null)
+    if (resp.status === 401 && token) await sessionEnded()
     throw new ApiError(resp.status, body?.error?.code ?? 'http_error', body?.error?.message ?? t.auth.errors.generic)
   }
   const filename = /filename="([^"]+)"/.exec(resp.headers.get('Content-Disposition') ?? '')?.[1] ?? null

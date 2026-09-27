@@ -57,12 +57,14 @@ export function LedgerScreen() {
     if (r.decision === 'auto' && r.entry) showToast({ kind: 'saved', entry: r.entry }, UNDO_MS)
   }
   const onError = (e: Error) => setError(e.message)
+  const [entryFailed, setEntryFailed] = useState(false)
   const tooShort = useCallback(() => showToast({ kind: 'text', text: t.ledger.tooShort }, 2500), [showToast])
   const denied = useCallback(() => setMicBlocked(true), [])
 
   function sendEntry(blob: Blob, answerTo?: string) {
-    setError(null)
-    addVoice.mutate({ blob, answerTo }, { onSuccess: onEntryResult, onError })
+    setError(null); setEntryFailed(false)
+    // A failed voice entry saves nothing; the error comes with a way forward: add it by hand.
+    addVoice.mutate({ blob, answerTo }, { onSuccess: onEntryResult, onError: (e) => { onError(e); setEntryFailed(true) } })
   }
   function sendQuestion(blob: Blob) {
     setError(null)
@@ -79,7 +81,7 @@ export function LedgerScreen() {
 
   return (
     <div className="grid app:grid-cols-3">
-      <div className="app:sticky app:top-14 app:self-start">
+      <div className="app:sticky app:top-[calc(3.5rem+env(safe-area-inset-top))] app:self-start">
         <RibbedGlass intensity={recording ? 'live' : 'idle'} className="flex min-h-[38vh] flex-col justify-end gap-3 gutter-x py-8">
           <HoldButton label={t.ledger.holdToAdd} busy={busy} onAudio={(b) => sendEntry(b)}
             onTooShort={tooShort} onDenied={denied} onRecordingChange={onRecAdd} />
@@ -90,7 +92,14 @@ export function LedgerScreen() {
       </div>
 
       <div className="flex flex-col gap-10 gutter-x py-10 app:col-span-2">
-        {error && <p className="t-body-lg" role="alert">{error}</p>}
+        {error && (
+          <div className="flex flex-col items-start gap-2" role="alert" data-testid="voice-error">
+            <p className="t-body-lg">{error}</p>
+            {entryFailed && !showForm && (
+              <Button variant="text" onClick={() => { setShowForm(true); setError(null) }}>{t.ledger.addByHand}</Button>
+            )}
+          </div>
+        )}
         <div aria-live="polite" className="empty:-mb-10">
           {result?.kind === 'entry' && (
             <EntryResult

@@ -15,12 +15,13 @@ log = logging.getLogger("khata")
 
 
 class AppError(Exception):
-    def __init__(self, status: int, code: str, message: str):
-        self.status, self.code, self.message = status, code, message
+    """`extra` adds fields next to code and message, e.g. the id of the party a name clashes with."""
+    def __init__(self, status: int, code: str, message: str, extra: dict | None = None):
+        self.status, self.code, self.message, self.extra = status, code, message, extra or {}
 
 
-def _body(code: str, message: str) -> dict:
-    return {"error": {"code": code, "message": message}}
+def _body(code: str, message: str, extra: dict | None = None) -> dict:
+    return {"error": {"code": code, "message": message, **(extra or {})}}
 
 
 PG_ERRORS = {
@@ -37,7 +38,7 @@ PG_ERRORS = {
 def install_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(AppError)
     async def app_error(_: Request, exc: AppError):
-        return JSONResponse(_body(exc.code, exc.message), status_code=exc.status)
+        return JSONResponse(_body(exc.code, exc.message, exc.extra), status_code=exc.status)
 
     @app.exception_handler(RequestValidationError)
     async def validation_error(_: Request, exc: RequestValidationError):

@@ -33,7 +33,7 @@ export function AppShell() {
           <AppNav reviewCount={review.data?.count ?? 0} />
         </Header>
       </div>
-      <main className="pt-14 print:pt-0">
+      <main className="pt-[calc(3.5rem+env(safe-area-inset-top))] print:pt-0">
         <Suspense fallback={null}>
           <Outlet />
         </Suspense>

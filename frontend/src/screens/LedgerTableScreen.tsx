@@ -13,6 +13,7 @@ import { ENTRY_TYPES, useParties } from '../lib/ledger'
 import { shown } from '../lib/members'
 import { downloadCsv, PRESETS, useLedgerPage, type LedgerRow, type Preset } from '../lib/ledgerTable'
 import { formatPaise } from '../lib/money'
+import { SkeletonRows } from '../components/ui/Skeleton'
 import { t } from '../strings'
 
 const L = t.table
@@ -116,6 +117,7 @@ export function LedgerTableScreen() {
         {exportError && <p className="t-body" role="alert">{exportError}</p>}
         {adding && <ManualAdd />}
         {q.error && <p className="t-body-lg" role="alert">{q.error.message}</p>}
+        {!data && !q.error && <SkeletonRows rows={8} />}
         {data && <Totals totals={data.totals} />}
         {data && <Table rows={data.rows} />}
         {data && data.rows.length === 0 && <p className="border-t border-ink pt-6 t-body-lg">{L.empty}</p>}

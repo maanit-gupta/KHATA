@@ -30,7 +30,7 @@ type History = { action: string; at: string; actor: string; seq?: number; change
 const CUSTOMER = new Set(['credit_given', 'payment_received'])
 const SUPPLIER = new Set(['purchase_credit', 'purchase_paid', 'payment_made'])
 const SIGN: Record<string, number> = { credit_given: 1, payment_received: -1, purchase_credit: -1, payment_made: 1 }
-const USER = { id: 'user-1', email: 'asha@example.com', user_metadata: { name: 'Asha' } }
+export const USER = { id: 'user-1', email: 'asha@example.com', user_metadata: { name: 'Asha' } }
 export type MockUser = typeof USER
 export const ASHA: MockUser = USER
 export const PRIYA: MockUser = { id: 'user-2', email: 'priya@example.com', user_metadata: { name: 'Priya' } }
@@ -202,14 +202,27 @@ export class MockApi {
     await ctx.route('https://fonts.googleapis.com/**', (r) => r.fulfill({ status: 200, contentType: 'text/css', body: '' }))
   }
 
+  /** Auth calls, e.g. "token:refresh_token", "recover", "user:PUT" (GOAL_2.0 P8). */
+  authCalls: string[] = []
+  /** When true, the API answers 401 as if the session ended server-side, until the next sign-in. */
+  expireSession = false
+
   private async auth(route: Route) {
     const url = new URL(route.request().url())
     const body = route.request().postDataJSON?.() ?? {}
+    const grant = url.searchParams.get('grant_type')
+    this.authCalls.push(url.pathname.endsWith('/token') ? `token:${grant}` : `${url.pathname.split('/').pop()}:${route.request().method()}`)
+    if (url.pathname.endsWith('/token') && grant === 'password' && body.password === 'wrong-password') {
+      return route.fulfill({ status: 400, headers: { 'x-supabase-api-version': '2024-01-01' },
+        json: { code: 'invalid_credentials', error_code: 'invalid_credentials', msg: 'Invalid login credentials' } })
+    }
+    if (url.pathname.endsWith('/recover')) return route.fulfill({ json: {} })
+    if (url.pathname.endsWith('/token') && grant === 'password') this.expireSession = false
     if (url.pathname.endsWith('/signup') || url.pathname.endsWith('/token')) {
       const user = { ...USER, email: body.email ?? USER.email, aud: 'authenticated', role: 'authenticated',
         user_metadata: body.data ?? USER.user_metadata }
       this.signedIn = true
-      return route.fulfill({ json: { access_token: 'e2e-token', refresh_token: 'e2e-refresh', token_type: 'bearer',
+      return route.fulfill({ json: { access_token: `e2e:${this.actor}`, refresh_token: 'e2e-refresh', token_type: 'bearer',
         expires_in: 3600, expires_at: Math.floor(Date.now() / 1000) + 3600, user } })
     }
     if (url.pathname.endsWith('/logout')) return route.fulfill({ status: 204, body: '' })
@@ -242,6 +255,7 @@ export class MockApi {
     this.actor = /e2e:(\S+)/.exec(req.headers()['authorization'] ?? '')?.[1] ?? USER.id
     this.calls.push({ method, path: path + url.search, body, actor: this.actor })
     if (this.offline) return route.abort('internetdisconnected')
+    if (this.expireSession && path !== '/health') return this.err(route, 401, 'unauthorized', 'Your session has ended. Log in again.')
     const fail = this.failNext[`${method} ${seg[0]}`]
     if (fail) {
       delete this.failNext[`${method} ${seg[0]}`]

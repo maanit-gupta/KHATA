@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Navigate, Outlet, useLocation } from 'react-router'
 import { prefetchFor } from '../lib/prefetch'
 import { t } from '../strings'
@@ -30,17 +30,26 @@ function MeError({ message }: { message: string }) {
 }
 
 /** /app/*: needs a session AND a shop membership (CLAUDE.md §7). */
+/** To /login, carrying where to come back to after logging in again (GOAL_2.0 P8): the page the
+ * session ended on. The state object is memoised: <Navigate> re-navigates whenever it changes. */
+function ToLogin({ from }: { from: string }) {
+  const state = useMemo(() => ({ from }), [from])
+  return <Navigate to="/login" replace state={state} />
+}
+const toLogin = (location: { pathname: string; search: string }) => <ToLogin from={location.pathname + location.search} />
+
 export function RequireShop() {
   const session = useSession()
   const me = useMe()
   const qc = useQueryClient()
-  const landedOn = useRef(useLocation().pathname) // the page we landed on; later navigations load normally
+  const location = useLocation()
+  const landedOn = useRef(location.pathname) // the page we landed on; later navigations load normally
   const hasSession = !!session
   useEffect(() => {
     if (hasSession) prefetchFor(landedOn.current, qc)
   }, [hasSession, qc])
   if (session === undefined) return <Loading />
-  if (!session) return <Navigate to="/login" replace />
+  if (!session) return toLogin(location)
   if (me.isPending) return <Loading />
   if (me.isError) return <MeError message={me.error.message} />
   if (!me.data.shop) return <Navigate to="/onboarding" replace />
@@ -51,8 +60,9 @@ export function RequireShop() {
 export function RequireSessionWithoutShop() {
   const session = useSession()
   const me = useMe()
+  const location = useLocation()
   if (session === undefined) return <Loading />
-  if (!session) return <Navigate to="/login" replace />
+  if (!session) return toLogin(location)
   if (me.isPending) return <Loading />
   if (me.isError) return <MeError message={me.error.message} />
   if (me.data.shop) return <Navigate to="/app" replace />
@@ -63,9 +73,11 @@ export function RequireSessionWithoutShop() {
 export function PublicOnly() {
   const session = useSession()
   const me = useMe()
+  const from = (useLocation().state as { from?: string } | null)?.from
   if (session === undefined) return <Loading />
   if (!session) return <Outlet />
   if (me.isPending) return <Loading />
   if (me.isError) return <Outlet />
-  return <Navigate to={me.data.shop ? '/app' : '/onboarding'} replace />
+  if (!me.data.shop) return <Navigate to="/onboarding" replace />
+  return <Navigate to={from?.startsWith('/app') ? from : '/app'} replace />
 }

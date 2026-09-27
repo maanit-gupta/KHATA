@@ -4,6 +4,7 @@ import { BriefingCard } from '../components/BriefingCard'
 import { SummaryCard } from '../components/SummaryCard'
 import { AgingTable, DuesTable, RegisterTable, TodayStrip, TopCustomers } from '../components/dashboard/Tables'
 import { useDashboard } from '../lib/dashboard'
+import { SkeletonBlock, SkeletonRows } from '../components/ui/Skeleton'
 import { t } from '../strings'
 import { Screen } from './AppShell'
 
@@ -23,17 +24,26 @@ export function DashboardScreen() {
     <Screen title={t.dashboard.heading} wide>
       <div className="flex flex-col gap-14" data-testid="dashboard">
         {q.error && <p className="t-body-lg" role="alert">{q.error.message}</p>}
-        {!d && !q.error && <p className="t-body-lg" role="status">{t.errors.loading}</p>}
+        {!d && !q.error && (
+          <div className="flex flex-col gap-8">
+            <SkeletonBlock className="h-32" />
+            <SkeletonRows rows={5} />
+            <SkeletonBlock className="h-[220px]" />
+          </div>
+        )}
         <BriefingCard />
         {d && (
           <>
+            {d.register.days.every((x) => x.entry_count === 0) && d.aging.rows.length === 0 && d.dues.rows.length === 0 && (
+              <p className="t-body-lg" data-testid="dashboard-empty">{t.dashboard.emptyShop}</p>
+            )}
             <TodayStrip data={d} />
             <SummaryCard />
             <div className="grid gap-14 app:grid-cols-5">
               <div className="min-w-0 app:col-span-3"><AgingTable data={d} /></div>
               <div className="min-w-0 app:col-span-2"><DuesTable data={d} /></div>
             </div>
-            <Suspense fallback={<p className="t-body" role="status">{t.errors.loading}</p>}>
+            <Suspense fallback={<SkeletonBlock className="h-[260px]" />}>
               <DashboardCharts data={d} />
             </Suspense>
             <RegisterTable data={d} />

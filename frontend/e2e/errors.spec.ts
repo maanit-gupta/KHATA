@@ -39,8 +39,10 @@ test('API errors show their plain message', async ({ page }) => {
   await page.mouse.up()
   await expect(page.getByRole('alert').filter({ hasText: 'Service busy, try again.' })).toBeVisible()
 
+  // The failed voice entry saved nothing and offers the way forward (GOAL_2.0 P8): add it by hand.
   m.failNext['POST entries'] = { status: 422, error: { code: 'bad_amount', message: 'That amount is too large. Check it and try again.' } }
-  await page.getByRole('button', { name: 'Add by hand' }).click()
+  await page.getByTestId('voice-error').getByRole('button', { name: 'Add by hand' }).click()
+  await expect(page.getByTestId('manual-add')).toBeVisible()
   await page.getByLabel('Amount (₹) *').fill('50')
   await page.getByLabel('Customer or supplier name *').fill('Ramesh')
   await page.getByRole('button', { name: 'Save entry' }).click()
