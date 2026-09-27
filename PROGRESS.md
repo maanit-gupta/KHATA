@@ -6,8 +6,8 @@
 
 | Service | Budget | Used | Log |
 |---|---|---|---|
-| Sarvam (every HTTP call counted: STT, TTS, translate, Document AI start/status/results) | 150 | 97 | P1.4 harness run 1: 42 (6 TTS clips, 6 STT, 4 translate, 6 TTS read-backs, 3 bills 20); P1.4 bills re-run after the D-050 fix: 21; P1.5 comparison: 28 (18 translate, 6 TTS, 4 STT); P2 live UI scan: 6 |
-| Groq | 200 | 6 | P1.4 harness run 1: 6 parses |
+| Sarvam (every HTTP call counted: STT, TTS, translate, Document AI start/status/results) | 150 | 105 | P1.4 harness run 1: 42 (6 TTS clips, 6 STT, 4 translate, 6 TTS read-backs, 3 bills 20); P1.4 bills re-run after the D-050 fix: 21; P1.5 comparison: 28 (18 translate, 6 TTS, 4 STT); P2 live UI scan: 6; P7.4 live briefing hi + ta: 8 (translates and 2 TTS, incl. the Home weekly card's narration) |
+| Groq | 200 | 8 | P1.4 harness run 1: 6 parses; P7.4 live check: 2 (the Home weekly card's narration) |
 
 ## Tasks
 
@@ -76,6 +76,14 @@
 - [x] **P6.6 Expense categories**: column from migration 003; `parse_entry` strict nullable enum; chips on quick add, the expense bill form, entry edit; "Uncategorised" for null.
 - [x] **P6.7 Top customers** this month by credit given and by collections.
 - AC: `backend/tests/test_dashboard.py` (9, live DB, hand-computed: empty shop; register/strip/outstanding with a voided and a pending entry excluded and credit carried in from before the window; aging bucket edges 0/7/8/30/31/60/61 + dues; month boundary for categories and top customers; category rules; voice parse category ×3; no-shop 409) + `test_receipts.py` category chip + isolation for `/dashboard`, the 004 functions and `dashboard_json`. `e2e/dashboard.spec.ts` (5). **Speed: 1098 ms median in the browser, 715 ms API, on a seeded 716-entry shop** (D-064, `artifacts/perf/dashboard.json`). Migrations 004 and 005 applied (additive: new functions only). Screens: `artifacts/screens/P6-dashboard/` (mocked, 390/1280) and `P6-dashboard-live/` (the seeded shop, real data).
+
+### P7 AI summaries, tips, daily briefing, PDF report
+- [x] **P7.1 Tip rules** in `app/tips.py` over `tip_facts_json` (migration 006): the seven starting rules, ranked by rupee impact, top 3 (D-066).
+- [x] **P7.2 Summary + tips card** on the dashboard (Today / This week tabs), in the report language; `ai_reports` cache by facts hash; WRITE IT AGAIN refused within 5 minutes; "every number in it is checked" under it.
+- [x] **P7.3 Printable report** `/app/report` (period or party statement), DOWNLOAD PDF = `window.print()`, A4 print stylesheet (D-065). Linked from the summary card ("Printable report →") and from party statements (SHARE STATEMENT).
+- [x] **P7.4 Daily briefing** card on Home and Dashboard until closed that day; play on tap only; text cached per shop/day/language, MP3 per language and voice.
+- [x] **P7.5 Q&A tools** `get_daily_register(from, to)` and `get_credit_aging()` (read-only, rupees).
+- AC: `backend/tests/test_reports.py` (30): every rule fires and stays silent at its edge, ranking; a fabricated number in the summary and in a tip → templates; cache hit / miss on changed facts / refresh refused then allowed after 5 min; per-language cache; week and month periods; report data range + limits; briefing text, both caches, report-language voice, ≤ 700 chars; both Q&A tools. Isolation cases for the 5 new routes and the 006 functions. `e2e/reports.spec.ts` (7) incl. **`page.pdf()` in Tamil and Hindi** (`artifacts/reports/report-ta.pdf`, `report-hi.pdf`, print renders beside them); dashboard + report added to the a11y walk. **Live briefing** on the seeded shop through the real UI: Hindi (241 chars, 262 kB MP3, played, replay from storage) and Tamil (236 chars, 331 kB, played, replay cached); `artifacts/briefing/` (MP3s, screenshots, live.json). 8 Sarvam + 2 Groq calls. The seeded shop, its files and user were deleted afterwards, as was one throwaway test user an interrupted run had left.
 
 ---
 

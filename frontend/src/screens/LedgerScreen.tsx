@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router'
 import { EntryList } from '../components/EntryList'
 import { ManualAdd } from '../components/ManualAdd'
 import { MicBlocked } from '../components/MicBlocked'
+import { BriefingCard } from '../components/BriefingCard'
 import { WeeklyCard } from '../components/WeeklyCard'
 import { Button, ButtonLink } from '../components/ui/Button'
 import { Disclosure } from '../components/ui/Disclosure'
@@ -107,6 +108,7 @@ export function LedgerScreen() {
           {result?.kind === 'answer' && <AnswerCard answer={result.data} />}
         </div>
 
+        <BriefingCard />
         <WeeklyCard />
 
         <section>

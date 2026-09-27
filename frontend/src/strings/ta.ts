@@ -550,6 +550,31 @@ export const ta: Strings = {
     },
   },
 
+  reports: {
+    summaryTitle: 'சுருக்கமாக',
+    tabs: { day: 'இன்று', week: 'இந்த வாரம்', month: 'இந்த மாதம்' },
+    tipsTitle: 'கவனிக்க வேண்டியவை',
+    noTips: 'இப்போது கவனிக்க வேண்டியது எதுவுமில்லை.',
+    refresh: 'மீண்டும் எழுது',
+    refreshing: 'எழுதுகிறது…',
+    written: (time: string) => `${time} மணிக்குக் கடையின் எண்களிலிருந்து எழுதப்பட்டது; இதில் உள்ள ஒவ்வொரு எண்ணும் அவற்றுடன் சரிபார்க்கப்பட்டது.`,
+    open: 'அச்சிடக்கூடிய அறிக்கை',
+    heading: ['கடை', 'அறிக்கை.'],
+    period: 'காலம்',
+    download: 'PDF பதிவிறக்கு',
+    printHelp: 'அச்சு சாளரம் திறக்கும். நகல் வைக்க “Save as PDF” என்பதைத் தேர்ந்தெடுங்கள்.',
+    footer: (shop: string, range: string, at: string) => `${shop} · ${range} · KHATA ${at} அன்று உருவாக்கியது`,
+    totalsTitle: 'மொத்தம்',
+    expensesTitle: 'வகைவாரியான செலவுகள்',
+    statementTitle: (name: string) => `கணக்கு அறிக்கை: ${name}`,
+    back: 'டாஷ்போர்டுக்குத் திரும்பு',
+  },
+  briefing: {
+    title: 'இன்றைய சுருக்கம்',
+    play: 'சுருக்கத்தைக் கேள்',
+    close: 'மூடு',
+  },
+
   toast: {
     undo: 'திரும்பப் பெறு',
     undone: 'திரும்பப் பெறப்பட்டது.',

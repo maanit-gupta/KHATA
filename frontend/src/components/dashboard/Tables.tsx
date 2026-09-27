@@ -71,7 +71,7 @@ export function RegisterTable({ data }: { data: Dashboard }) {
     return (
       <th key={col} scope="col" aria-sort={active ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'} className={`${TH} ${right ? 'text-right' : ''}`}>
         <button type="button" onClick={() => setSort(next)} aria-label={R.sort(name)}
-          className={`inline-flex min-h-12 items-center gap-1 underline-offset-4 hover:underline ${active ? 'underline' : ''}`}>
+          className={`inline-flex min-h-12 min-w-12 items-center gap-1 underline-offset-4 hover:underline ${active ? 'underline' : ''}`}>
           {name}{active && <span aria-hidden className={`inline-block ${sort.dir === 'asc' ? '-rotate-90' : 'rotate-90'}`}>{t.arrow}</span>}
         </button>
       </th>

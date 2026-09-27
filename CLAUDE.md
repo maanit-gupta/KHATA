@@ -159,6 +159,11 @@ Only total, vendor, and date are stored as fields; the full raw OCR JSON is kept
 | GET /members | — | `{members [{user_id, name ("(you)" after your own), display_name, role, joined_at, you}], invite_code}` (P4.6) |
 | GET /activity | — | last 30 audit actions: `{activity [{id, entry_id, action, at, by, by_you, type, amount_paise, party_name, note, changed}]}` (P4.4) |
 | GET /dashboard | — | `{today, strip [4 metrics: today, same day last week, change], register {from, to, days (30, zero-filled, with outstanding credit), weeks (Mon–Sun subtotals of the days shown)}, aging {rows, buckets 0-7/8-30/31-60/60+}, dues {rows}, expenses {this month by category}, top_customers {by_credit, by_collections}}`, all from SQL `dashboard_json` (P6) |
+| GET /reports/summary | `?period=day/week/month&date=` | `{period, period_start, from, to, lang, summary, tips[], summary_en, tips_en[], tip_facts[], cached, generated_at}`: SQL facts (`summary_facts_json`) + code tip rules, phrased by gpt-oss-20b, number-guarded, in the report language; cached in `ai_reports` by facts hash (P7.1, P7.2) |
+| POST /reports/summary/refresh | `{period}` | same; a new phrasing, refused with 429 `refresh_too_soon` within 5 minutes of the last one |
+| GET /reports/data | `?from=&to=` (≤ 92 days) | `report_json`: totals, register days + weekly subtotals, aging, dues, expenses by category (P7.3) |
+| GET /briefing | — | `{day, lang, text, text_en, voice, audio_cached}`: yesterday's figures, today's top tip, review count; template English localized to the report language; cached per shop/day/language (P7.4) |
+| POST /briefing/audio | — | `{url, voice, cached}`: signed URL to the briefing MP3, made once per language and voice; rate-limited like /tts |
 
 Amounts cross the API as rupees (number) in requests and paise (integer) in responses; the
 frontend formats paise as `₹1,250` (en-IN grouping). Errors: `{error: {code, message}}` with a

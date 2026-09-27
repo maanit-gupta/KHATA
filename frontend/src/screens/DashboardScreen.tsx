@@ -1,5 +1,7 @@
 import { lazy, Suspense } from 'react'
 import { ActivityFeed } from '../components/ActivityFeed'
+import { BriefingCard } from '../components/BriefingCard'
+import { SummaryCard } from '../components/SummaryCard'
 import { AgingTable, DuesTable, RegisterTable, TodayStrip, TopCustomers } from '../components/dashboard/Tables'
 import { useDashboard } from '../lib/dashboard'
 import { t } from '../strings'
@@ -22,9 +24,11 @@ export function DashboardScreen() {
       <div className="flex flex-col gap-14" data-testid="dashboard">
         {q.error && <p className="t-body-lg" role="alert">{q.error.message}</p>}
         {!d && !q.error && <p className="t-body-lg" role="status">{t.errors.loading}</p>}
+        <BriefingCard />
         {d && (
           <>
             <TodayStrip data={d} />
+            <SummaryCard />
             <div className="grid gap-14 app:grid-cols-5">
               <div className="min-w-0 app:col-span-3"><AgingTable data={d} /></div>
               <div className="min-w-0 app:col-span-2"><DuesTable data={d} /></div>
