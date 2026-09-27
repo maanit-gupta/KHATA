@@ -6,12 +6,14 @@
 
 from __future__ import annotations
 
+from datetime import timedelta
 from types import SimpleNamespace
 
 import pytest
 from postgrest.exceptions import APIError
 
 from app.db import admin_client, user_client
+from app.ledger import today_ist
 from app.storage import upload
 from tests.conftest import AUDIO, Users, api_routes, post_audio
 
@@ -277,6 +279,16 @@ def c_activity(client, w):
     _no_b(w, r)
 
 
+def c_dashboard(client, w):
+    r = client.get("/dashboard", headers=w.a["headers"]).json()
+    # A has one ₹10 credit today (Ramesh); B has ₹200 of credit. Nothing of B's may show.
+    assert [x["display_name"] for x in r["aging"]["rows"]] == ["Ramesh"]
+    assert r["aging"]["rows"][0]["balance_paise"] == 1000
+    assert r["register"]["days"][-1]["credit_given_paise"] == 1000
+    assert r["top_customers"]["by_credit"][0]["credit_given_paise"] == 1000 and len(r["top_customers"]["by_credit"]) == 1
+    _no_b(w, r)
+
+
 CASES = {
     ("GET", "/me"): c_me,
     ("PATCH", "/me"): c_patch_me,
@@ -308,6 +320,7 @@ CASES = {
     ("GET", "/parties/{party_id}/statement"): c_statement,
     ("GET", "/members"): c_members,
     ("GET", "/activity"): c_activity,
+    ("GET", "/dashboard"): c_dashboard,
 }
 # Routes that act only on the caller's own shop by construction (shop_id comes from the caller's
 # membership, never from the request) and have no B-owned id to aim at. Each has a reason.
@@ -329,7 +342,7 @@ SPEC_ROUTES = {
     ("GET", "/media/{bucket}/{item_id}"),
 } | {  # GOAL_2.0 additions (CLAUDE.md §6.5 is updated with each)
     ("GET", "/ledger"), ("GET", "/ledger/export.csv"), ("GET", "/parties/suggest"),
-    ("GET", "/parties/{party_id}/statement"), ("GET", "/members"), ("GET", "/activity"),
+    ("GET", "/parties/{party_id}/statement"), ("GET", "/members"), ("GET", "/activity"), ("GET", "/dashboard"),
 }
 
 
@@ -378,6 +391,54 @@ def test_a_gets_nothing_from_bs_shop_through_the_sql_functions(world, fn, extra)
     mine = user_client(world.b["token"]).rpc(fn, {"p_shop": world.b["shop_id"], **extra}).execute().data
     if fn in ("ledger_rows", "party_period_totals"):
         assert mine, "B should see its own rows (proves the empty answer above is isolation)"
+
+
+ZERO_FILLED = [  # migration 004: these return a row per day / metric even for an empty shop
+    ("register_days", {"p_from": "2000-01-01", "p_to": "2100-01-01"}),
+    ("register_weeks", {"p_from": "2000-01-01", "p_to": "2100-01-01"}),
+    ("today_vs_last_week", {"p_today": None}),
+    ("collections_vs_last_week", {"p_week_start": None, "p_today": None}),
+]
+
+
+@pytest.mark.parametrize("fn, extra", ZERO_FILLED + [
+    ("expense_category_excess", {"p_week_start": "2000-01-01", "p_today": "2100-01-01"}),
+    ("customer_credit_excess", {"p_month_start": "2000-01-01", "p_today": "2100-01-01"}),
+], ids=lambda x: x if isinstance(x, str) else "")
+def test_a_gets_only_zeros_from_bs_shop_through_the_004_functions(world, fn, extra):
+    """Migration 004's functions are security invoker too. The zero-filled ones still return their
+    calendar rows for B's id, but every amount is 0; B itself sees its own money."""
+    d = today_ist()
+    today, week = d.isoformat(), (d - timedelta(days=d.weekday())).isoformat()
+    args = {k: (today if k == "p_today" and v is None else week if k == "p_week_start" and v is None else v)
+            for k, v in extra.items()}
+    if fn in ("register_days", "register_weeks"):
+        args = {"p_from": (d - timedelta(days=3)).isoformat(), "p_to": today}
+
+    def money(rows):
+        return sum(abs(v) for r in rows for k, v in r.items() if k.endswith("_paise") and v)
+    theirs = user_client(world.a["token"]).rpc(fn, {"p_shop": world.b["shop_id"], **args}).execute().data
+    mine = user_client(world.b["token"]).rpc(fn, {"p_shop": world.b["shop_id"], **args}).execute().data
+    assert money(theirs) == 0
+    if (fn, extra) in ZERO_FILLED and fn not in ("collections_vs_last_week",):
+        assert money(mine) > 0, "B should see its own credit (proves the zeros above are isolation)"
+    _no_b(world, theirs)
+
+
+def test_dashboard_json_for_bs_shop_is_empty(world):
+    """Migration 005: the one-call dashboard, asked for shop B by A: zeros and empty lists."""
+    args = {"p_shop": world.b["shop_id"], "p_today": today_ist().isoformat()}
+    theirs = user_client(world.a["token"]).rpc("dashboard_json", args).execute().data
+    mine = user_client(world.b["token"]).rpc("dashboard_json", args).execute().data
+
+    def money(x):
+        if isinstance(x, dict):
+            return sum(abs(v) if k.endswith("_paise") and isinstance(v, int) else money(v) for k, v in x.items())
+        return sum(money(v) for v in x) if isinstance(x, list) else 0
+    assert money(theirs) == 0 and theirs["aging"]["rows"] == [] and theirs["top_customers"]["by_credit"] == []
+    assert len(theirs["register"]["days"]) == 30
+    assert money(mine) > 0 and mine["aging"]["rows"], "B sees its own (proves the zeros above are isolation)"
+    _no_b(world, theirs)
 
 
 @pytest.mark.parametrize("table", SHOP_TABLES + ["shops", "party_aliases"])

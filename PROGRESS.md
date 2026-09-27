@@ -67,6 +67,16 @@
 - [x] **P5.3 Pipeline.** STT uses `lang` (or auto); read-backs, answers and the settings sample translate to and speak in `voice_lang` with that language's voice; the weekly narration and `POST /tts {purpose: "report"}` use `report_lang`.
 - AC: `backend/tests/test_langs.py` (unit fallbacks ×7 + the mixed combination end to end through the real routes: heard as Hindi, read back and answered in Tamil with the Tamil voice, weekly summary in a third language, `/tts` purpose split; clearing an aspect falls back); `e2e/languages.spec.ts` (pickers; UI switch applies at once and survives reload; the mixed combination speak hi / hear ta / screens en / reports ta; no sideways scroll at 390 px on six screens in en, hi, ta and ml). Screens: `artifacts/screens/P5-languages/` (Settings and Ledger in English, Hindi, Tamil at 390 and 1280).
 
+### P6 Dashboard
+- [x] **P6.1 Today strip**: cash sales, credit given, collected, expenses, each with its change vs the same weekday last week ("+₹100 vs 20 Sep"; SQL `today_vs_last_week`).
+- [x] **P6.2 Daily register**, last 30 days: date | cash sales | credit given | collected | purchases | supplier paid | expenses | net cash in hand; sortable (aria-sort); Mon–Sun subtotal rows in date order; the net formula under the table and tested.
+- [x] **P6.3 Who owes me**: bucket totals (0–7 / 8–30 / 31–60 / 60+) as a header strip, then name | owes you | oldest due | last payment | age; rows open the party statement; the age rule in the help text.
+- [x] **P6.4 What I owe**: supplier | you owe | last payment | days.
+- [x] **P6.5 Charts** (recharts, flat ink/cyan, square markers, hairline axes): sales vs collections (30 days), outstanding credit over time (reconstructed from entries), expenses by category this month. D-063.
+- [x] **P6.6 Expense categories**: column from migration 003; `parse_entry` strict nullable enum; chips on quick add, the expense bill form, entry edit; "Uncategorised" for null.
+- [x] **P6.7 Top customers** this month by credit given and by collections.
+- AC: `backend/tests/test_dashboard.py` (9, live DB, hand-computed: empty shop; register/strip/outstanding with a voided and a pending entry excluded and credit carried in from before the window; aging bucket edges 0/7/8/30/31/60/61 + dues; month boundary for categories and top customers; category rules; voice parse category ×3; no-shop 409) + `test_receipts.py` category chip + isolation for `/dashboard`, the 004 functions and `dashboard_json`. `e2e/dashboard.spec.ts` (5). **Speed: 1098 ms median in the browser, 715 ms API, on a seeded 716-entry shop** (D-064, `artifacts/perf/dashboard.json`). Migrations 004 and 005 applied (additive: new functions only). Screens: `artifacts/screens/P6-dashboard/` (mocked, 390/1280) and `P6-dashboard-live/` (the seeded shop, real data).
+
 ---
 
 # Run 1 (GOAL.md) — archived

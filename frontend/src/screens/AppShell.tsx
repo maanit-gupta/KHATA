@@ -41,12 +41,14 @@ export function AppShell() {
   )
 }
 
-/** Mobile: single column. ≥900px: title (and actions) in the left 1/3, content in the right 2/3. */
-export function Screen({ title, children }: { title: readonly string[]; children?: ReactNode }) {
+/** Mobile: single column. ≥900px: title (and actions) in the left 1/3, content in the right 2/3.
+ * `wide` puts the content under the title across the full width, for screens made of wide tables
+ * (the dashboard). */
+export function Screen({ title, children, wide = false }: { title: readonly string[]; children?: ReactNode; wide?: boolean }) {
   return (
-    <div className="grid gap-8 gutter-x py-10 app:grid-cols-3 app:py-16">
+    <div className={`grid gap-8 gutter-x py-10 app:py-16 ${wide ? '' : 'app:grid-cols-3'}`}>
       <H2 lines={title} as="h1" />
-      {children && <div className="min-w-0 app:col-span-2">{children}</div>}
+      {children && <div className={`min-w-0 ${wide ? '' : 'app:col-span-2'}`}>{children}</div>}
     </div>
   )
 }

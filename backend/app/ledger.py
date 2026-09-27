@@ -8,6 +8,7 @@ from decimal import Decimal, InvalidOperation
 from zoneinfo import ZoneInfo
 
 from .auth import CurrentUser
+from .constants import EXPENSE_CATEGORIES
 from .errors import AppError
 from .routers.me import get_membership
 
@@ -20,6 +21,22 @@ CUSTOMER_TYPES = {"credit_given", "payment_received"}
 SUPPLIER_TYPES = {"purchase_credit", "purchase_paid", "payment_made"}
 NO_PARTY_TYPES = {"cash_sale", "purchase_paid", "expense"}
 ENTRY_SELECT = "*, parties(display_name, kind)"
+
+
+def expense_category(entry_type: str, category: str | None) -> str | None:
+    """The category to store: only on an expense, only a known value, else null. For API input
+    use check_expense_category, which refuses instead of dropping."""
+    return category if entry_type == "expense" and category in EXPENSE_CATEGORIES else None
+
+
+def check_expense_category(entry_type: str, category: str | None) -> str | None:
+    if category is None:
+        return None
+    if category not in EXPENSE_CATEGORIES:
+        raise AppError(422, "bad_category", "Unknown expense category.")
+    if entry_type != "expense":
+        raise AppError(422, "category_not_expense", "Only expenses have a category.")
+    return category
 
 # Largest amount accepted at the API: ₹10 crore. Guards against typos and float precision
 # (every rupee value below this with 2 decimals round-trips exactly through a JSON float).

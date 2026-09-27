@@ -24,7 +24,7 @@ from ..qa_tools import make_tools
 from ..ratelimit import rate_limit
 from ..db import user_client
 from ..errors import AppError
-from ..ledger import (NO_PARTY_TYPES, check_uuid, not_found, now_iso, parse_iso_date, party_kind_for,
+from ..ledger import (NO_PARTY_TYPES, check_uuid, expense_category, not_found, now_iso, parse_iso_date, party_kind_for,
                       require_membership, today_ist)
 from ..services import llm_router
 from ..services.sarvam import client as sarvam
@@ -113,6 +113,7 @@ def _save(db, m: dict, user: CurrentUser, parsed: llm_router.ParsedEntry, matche
     auto = d.action == "auto"
     row = {"shop_id": m["shop_id"], "party_id": party_id, "type": parsed.type,
            "amount_paise": parsed.amount_paise, "note": parsed.note,
+           "expense_category": expense_category(parsed.type, parsed.expense_category),
            "occurred_on": parsed.occurred_on or today_ist().isoformat(),
            "status": "confirmed" if auto else "pending", "source": "voice", "auto_saved": auto,
            "review_reason": d.reason, "voice_note_id": note_id, "created_by": user.id}
@@ -228,7 +229,7 @@ def resolve(body: Resolve, user: CurrentUser = Depends(current_user)):
     entry_id = rows[0]["id"]
     e = info["entry"]
     parsed = llm_router.ParsedEntry(e["type"], e["party_name"], e["amount_paise"], e["note"], e["occurred_on"],
-                                    False, None)
+                                    False, None, e.get("expense_category"))
     kind = party_kind_for(parsed.type)
     if body.choice == "use_suggested":
         matches = [{"party_id": dec["suggested_party_id"], "display_name": dec["suggestion"], "score": 1.0}]

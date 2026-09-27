@@ -4,13 +4,14 @@ import { useSearchParams } from 'react-router'
 import { Button, ButtonLink } from '../components/ui/Button'
 import { SegmentChip } from '../components/ui/Chip'
 import { Disclosure } from '../components/ui/Disclosure'
+import { CategoryChips } from '../components/CategoryChips'
 import { Field } from '../components/ui/Field'
 import { RibbedGlass } from '../components/ui/RibbedGlass'
 import { StatusSquare, type Status } from '../components/ui/StatusSquare'
 import { Toast, ToastAction } from '../components/ui/Toast'
 import { api } from '../lib/api'
 import { todayIst } from '../lib/dates'
-import { confirmEntry, useLedgerMutation, voidEntry, type Entry } from '../lib/ledger'
+import { confirmEntry, useLedgerMutation, voidEntry, type Entry, type ExpenseCategory } from '../lib/ledger'
 import { mediaUrl } from '../lib/media'
 import { formatPaise } from '../lib/money'
 import { PhotoError, preparePhoto, releasePhoto, rotatePhoto, type Prepared } from '../lib/photo'
@@ -306,6 +307,7 @@ function BillForm({ receipt, photo, onSaved, typed = false }:
   const [date, setDate] = useState(receipt.bill_date ?? todayIst())
   const [total, setTotal] = useState(receipt.total_paise != null ? String(receipt.total_paise / 100) : '')
   const [customer, setCustomer] = useState('')
+  const [category, setCategory] = useState<ExpenseCategory | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
   const sent = useRef(false) // a second tap before the first answer can never send twice
   const needsCustomer = kind === 'customer' && settled === false
@@ -324,7 +326,8 @@ function BillForm({ receipt, photo, onSaved, typed = false }:
     const changedKind = kind !== receipt.kind || settled !== receipt.settled
     save.mutate(
       { vendor_name: vendor || undefined, bill_date: date || undefined, total_rupees: Number(total.replace(/,/g, '')),
-        customer_name: needsCustomer ? customer : undefined, ...(changedKind ? { kind, settled: kind === 'expense' ? null : settled } : {}) },
+        customer_name: needsCustomer ? customer : undefined, ...(changedKind ? { kind, settled: kind === 'expense' ? null : settled } : {}),
+        ...(kind === 'expense' && category ? { expense_category: category } : {}) },
       { onSuccess: onSaved, onError: () => { sent.current = false } },
     )
   }
@@ -367,6 +370,7 @@ function BillForm({ receipt, photo, onSaved, typed = false }:
           value={total} onChange={(e) => setTotal(e.target.value)}
           hint={receipt.total_paise == null ? t.scan.notFound : receipt.total_check === 'check' ? t.scan.checkThis : null}
           hintTone={receipt.total_paise != null && receipt.total_check === 'check' ? 'check' : 'info'} />
+        {kind === 'expense' && <CategoryChips dark value={category} onChange={setCategory} />}
         {needsCustomer && <Field dark label={t.scan.customerName} required value={customer} onChange={(e) => setCustomer(e.target.value)} />}
         {save.error && <p className="t-body" role="alert">{save.error.message}</p>}
         <Button type="submit" variant="inverse" disabled={save.isPending}>{save.isPending ? t.ledger.working : t.scan.save}</Button>

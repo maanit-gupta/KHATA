@@ -9,7 +9,7 @@ from ..auth import CurrentUser, current_user
 from ..db import user_client
 from ..errors import AppError
 from ..members import FALLBACK, name_map, who
-from ..ledger import (ENTRY_SELECT, ENTRY_STATUSES, ENTRY_TYPES, NO_PARTY_TYPES, check_party, check_uuid,
+from ..ledger import (ENTRY_SELECT, ENTRY_STATUSES, ENTRY_TYPES, NO_PARTY_TYPES, check_expense_category, check_party, check_uuid,
                       entry_out, expected_party_kind, not_found, now_iso, parse_iso_date, party_kind_for,
                       require_membership, rupees_to_paise, today_ist)
 
@@ -27,6 +27,7 @@ class NewEntry(BaseModel):
     party_name: str | None = None
     note: str | None = None
     occurred_on: str | None = None
+    expense_category: str | None = None   # GOAL_2.0 P6.6, expenses only
 
 
 class EntryPatch(BaseModel):
@@ -37,6 +38,7 @@ class EntryPatch(BaseModel):
     party_name: str | None = None
     note: str | None = None
     occurred_on: str | None = None
+    expense_category: str | None = None
 
 
 def get_or_create_party(db, shop_id: str, name: str, kind: str, needs_review: bool) -> str:
@@ -96,6 +98,7 @@ def create_entry(body: NewEntry, user: CurrentUser = Depends(current_user)):
     row = db.table("entries").insert({
         "shop_id": m["shop_id"], "party_id": party_id, "type": body.type,
         "amount_paise": amount_paise, "note": (body.note or "").strip() or None,
+        "expense_category": check_expense_category(body.type, body.expense_category),
         "occurred_on": occurred_on, "status": "confirmed",
         "source": "manual", "created_by": user.id, "confirmed_by": user.id, "confirmed_at": now_iso(),
     }).execute().data[0]
@@ -180,6 +183,10 @@ def edit_entry(entry_id: str, body: EntryPatch, user: CurrentUser = Depends(curr
         changes["note"] = (sent["note"] or "").strip() or None
     if "type" in sent and sent["type"]:
         changes["type"] = sent["type"]
+    if "expense_category" in sent:
+        changes["expense_category"] = check_expense_category(new_type, sent["expense_category"])
+    elif new_type != "expense" and current.get("expense_category"):
+        changes["expense_category"] = None      # no longer an expense: the category goes with it
 
     party_sent = "party_id" in sent or "party_name" in sent
     if party_sent:
