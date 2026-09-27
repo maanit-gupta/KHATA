@@ -5,6 +5,7 @@
  * Voice, question and OCR results are queued by each test (the real services are never called).
  */
 import type { Page, Route, WebSocketRoute } from '@playwright/test'
+import { emptyDashboard } from './dashboard.fixture'
 
 export const API = 'http://api.test'
 export const SB = 'http://sb.test'
@@ -15,6 +16,7 @@ export type Entry = {
   party_id: string | null; party_name: string | null; party_kind: Kind | null; note: string | null
   occurred_on: string; auto_saved: boolean; review_reason: string | null; source: 'voice' | 'receipt' | 'manual'
   created_at: string; receipt_id: string | null; voice_note_id: string | null; created_by?: string
+  expense_category?: string | null
 }
 type Party = { id: string; display_name: string; kind: Kind; needs_review: boolean }
 type Receipt = {
@@ -111,6 +113,9 @@ export class MockApi {
   /** Raw bytes of every uploaded audio/image part, in order (GOAL_2.0 P1.2a). */
   uploads: { path: string; bytes: Buffer; mime: string }[] = []
   insights: unknown = null
+  /** GET /dashboard: a hand-written fixture (e2e/dashboard.fixture.ts); the numbers are SQL's job,
+   * tested in backend/tests/test_dashboard.py. */
+  dashboard: unknown = null
   private seq = 0
 
   id(prefix: string) { return `${prefix}-${++this.seq}` }
@@ -282,7 +287,8 @@ export class MockApi {
       }
       const pid = (body.party_id as string) ?? (kind && body.party_name ? this.party(String(body.party_name), kind) : null)
       const e = this.entry({ type, amount_paise: Math.round(Number(body.amount_rupees) * 100), party_id: pid,
-        note: (body.note as string) ?? null, occurred_on: (body.occurred_on as string) ?? today() })
+        note: (body.note as string) ?? null, occurred_on: (body.occurred_on as string) ?? today(),
+        expense_category: (body.expense_category as string) ?? null })
       return ok(this.out(e), 201)
     }
     if (seg[0] === 'entries' && seg.length >= 2) {
@@ -301,6 +307,7 @@ export class MockApi {
         if (body.amount_rupees !== undefined) set('amount_paise', Math.round(Number(body.amount_rupees) * 100))
         if (body.occurred_on) set('occurred_on', body.occurred_on)
         if (body.note !== undefined) set('note', (body.note as string) || null)
+        if (body.expense_category !== undefined) set('expense_category', body.expense_category ?? null)
         if (body.party_name) {
           const kind: Kind = SUPPLIER.has(e.type) ? 'supplier' : 'customer'
           const before = this.out(e).party_name
@@ -434,12 +441,14 @@ export class MockApi {
         const auto = amount <= 500000
         const e = this.entry({ type, amount_paise: amount, party_id: pid, source: 'receipt', receipt_id: r.receipt_id,
           status: auto ? 'confirmed' : 'pending', auto_saved: auto, review_reason: auto ? null : 'amount above ₹5,000',
-          note: pid ? null : (body.vendor_name as string) ?? null, occurred_on: (body.bill_date as string) || today() })
+          note: pid ? null : (body.vendor_name as string) ?? null, occurred_on: (body.bill_date as string) || today(),
+          expense_category: type === 'expense' ? (body.expense_category as string) ?? null : null })
         r.status = 'done'
         return ok({ decision: auto ? 'auto' : 'confirm', entry: this.out(e), suggestion: null })
       }
     }
 
+    if (path === '/dashboard') return ok(this.dashboard ?? emptyDashboard())
     if (path === '/members') {
       return ok({ members: this.members.map((mm) => ({ ...mm, name: this.memberName(mm.user_id), you: mm.user_id === this.actor })), invite_code: this.shop.invite_code })
     }

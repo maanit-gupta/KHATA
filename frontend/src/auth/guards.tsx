@@ -1,5 +1,7 @@
-import { useEffect, useState } from 'react'
-import { Navigate, Outlet } from 'react-router'
+import { useQueryClient } from '@tanstack/react-query'
+import { useEffect, useRef, useState } from 'react'
+import { Navigate, Outlet, useLocation } from 'react-router'
+import { prefetchFor } from '../lib/prefetch'
 import { t } from '../strings'
 import { useMe, useSession } from './hooks'
 
@@ -31,6 +33,12 @@ function MeError({ message }: { message: string }) {
 export function RequireShop() {
   const session = useSession()
   const me = useMe()
+  const qc = useQueryClient()
+  const landedOn = useRef(useLocation().pathname) // the page we landed on; later navigations load normally
+  const hasSession = !!session
+  useEffect(() => {
+    if (hasSession) prefetchFor(landedOn.current, qc)
+  }, [hasSession, qc])
   if (session === undefined) return <Loading />
   if (!session) return <Navigate to="/login" replace />
   if (me.isPending) return <Loading />

@@ -418,3 +418,20 @@ def test_bill_kind_and_settled_can_change_on_the_review_form(client, users, fake
     ok = client.post(f"/receipts/{rid2}/save", json={"vendor_name": "Own shop", "total_rupees": 90, "kind": "customer",
                                                      "settled": True}, headers=u["headers"])
     assert ok.json()["entry"]["type"] == "cash_sale"
+
+
+def test_expense_bill_keeps_its_category_chip(client, users):
+    """GOAL_2.0 P6.6: an expense bill's category chip is saved on the entry; other kinds refuse one."""
+    u = users.with_shop()
+    db = user_client(u["token"])
+    base = {"shop_id": u["shop_id"], "ocr_lang_first": "en-IN", "status": "failed", "error": "could not read"}
+    rec = db.table("receipts").insert({**base, "image_path": f"{u['shop_id']}/c1.png", "kind": "expense"}).execute().data[0]
+    r = client.post(f"/receipts/{rec['id']}/save", json={"vendor_name": "Power Board", "total_rupees": 1450,
+                                                         "expense_category": "electricity"}, headers=u["headers"])
+    assert r.status_code == 200, r.text
+    assert (r.json()["entry"]["type"], r.json()["entry"]["expense_category"]) == ("expense", "electricity")
+    rec = db.table("receipts").insert({**base, "image_path": f"{u['shop_id']}/c2.png", "kind": "customer",
+                                       "settled": True}).execute().data[0]
+    r = client.post(f"/receipts/{rec['id']}/save", json={"vendor_name": "Shop", "total_rupees": 90,
+                                                         "expense_category": "rent"}, headers=u["headers"])
+    assert r.status_code == 422 and r.json()["error"]["code"] == "category_not_expense"

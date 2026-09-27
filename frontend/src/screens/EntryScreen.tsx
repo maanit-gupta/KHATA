@@ -3,12 +3,13 @@ import { useNavigate, useParams } from 'react-router'
 import { Button } from '../components/ui/Button'
 import { Disclosure } from '../components/ui/Disclosure'
 import { SegmentChip } from '../components/ui/Chip'
+import { CategoryChips } from '../components/CategoryChips'
 import { Field } from '../components/ui/Field'
 import { H2 } from '../components/ui/H2'
 import { StatusSquare } from '../components/ui/StatusSquare'
 import { Toast } from '../components/ui/Toast'
 import { formatWhen, patchEntry, useEntry, type HistoryRow } from '../lib/entry'
-import { confirmEntry, ENTRY_TYPES, reasonText, useLedgerMutation, voidEntry, type Entry, type EntryType } from '../lib/ledger'
+import { confirmEntry, ENTRY_TYPES, reasonText, useLedgerMutation, voidEntry, type Entry, type EntryType, type ExpenseCategory } from '../lib/ledger'
 import { shown } from '../lib/members'
 import { openBill, playRecording } from '../lib/media'
 import { formatPaise } from '../lib/money'
@@ -80,6 +81,7 @@ function EditForm({ entry }: { entry: Entry }) {
   const [party, setParty] = useState(entry.party_name ?? '')
   const [date, setDate] = useState(entry.occurred_on)
   const [note, setNote] = useState(entry.note ?? '')
+  const [category, setCategory] = useState<ExpenseCategory | null>((entry.expense_category as ExpenseCategory | null) ?? null)
   const [askVoid, setAskVoid] = useState(false)
   const [saved, setSaved] = useState(false)
   const save = useLedgerMutation(patchEntry)
@@ -96,6 +98,7 @@ function EditForm({ entry }: { entry: Entry }) {
     if (Math.round(Number(amount) * 100) !== entry.amount_paise) body.amount_rupees = Number(amount)
     if (date !== entry.occurred_on) body.occurred_on = date
     if ((note || null) !== entry.note) body.note = note
+    if (type === 'expense' && category !== (entry.expense_category ?? null)) body.expense_category = category
     if (needsParty && party.trim() && party.trim() !== (entry.party_name ?? '')) body.party_name = party.trim()
     save.mutate({ id: entry.id, body }, { onSuccess: () => { setSaved(true); window.setTimeout(() => setSaved(false), 2000) } })
   }
@@ -115,6 +118,7 @@ function EditForm({ entry }: { entry: Entry }) {
         </fieldset>
         <Field dark label={t.ledger.amount} required inputMode="decimal" type="number" min="0.01" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} />
         {needsParty && <Field dark label={t.entry.party} required={partyRequired} value={party} onChange={(e) => setParty(e.target.value)} />}
+        {type === 'expense' && <CategoryChips dark value={category} onChange={setCategory} />}
         <Field dark label={t.entry.date} type="date" required value={date} onChange={(e) => setDate(e.target.value)} />
         <Field dark label={t.ledger.note} value={note} onChange={(e) => setNote(e.target.value)} />
         {save.error && <p className="t-body" role="alert">{save.error.message}</p>}

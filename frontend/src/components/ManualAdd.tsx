@@ -2,8 +2,9 @@ import { useQuery } from '@tanstack/react-query'
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
 import { api } from '../lib/api'
 import { todayIst } from '../lib/dates'
-import { ENTRY_TYPES, NO_PARTY_TYPES, useLedgerMutation, type Entry, type EntryType } from '../lib/ledger'
+import { ENTRY_TYPES, NO_PARTY_TYPES, useLedgerMutation, type Entry, type EntryType, type ExpenseCategory } from '../lib/ledger'
 import { t } from '../strings'
+import { CategoryChips } from './CategoryChips'
 import { Button } from './ui/Button'
 import { SegmentChip } from './ui/Chip'
 import { Field } from './ui/Field'
@@ -36,6 +37,7 @@ export function ManualAdd({ onSaved }: { onSaved?: (e: Entry) => void }) {
   const [picked, setPicked] = useState<Suggestion | null>(null)
   const [date, setDate] = useState(todayIst())
   const [note, setNote] = useState('')
+  const [category, setCategory] = useState<ExpenseCategory | null>(null)
   const [savedOnce, setSavedOnce] = useState(false)
   const amountRef = useRef<HTMLInputElement>(null)
   const listId = useId()
@@ -57,11 +59,11 @@ export function ManualAdd({ onSaved }: { onSaved?: (e: Entry) => void }) {
     save.mutate(
       { type, amount_rupees: Number(amount.replace(/,/g, '')), occurred_on: date,
         ...(type === 'expense' || !party.trim() ? {} : usePicked ? { party_id: picked.party_id } : { party_name: party.trim() }),
-        note: note.trim() || undefined },
+        note: note.trim() || undefined, ...(type === 'expense' && category ? { expense_category: category } : {}) },
       {
         onSuccess: (e) => {
           setSavedOnce(true)
-          setAmount(''); setParty(''); setPicked(null); setNote('')
+          setAmount(''); setParty(''); setPicked(null); setNote(''); setCategory(null)
           amountRef.current?.focus()
           onSaved?.(e)
         },
@@ -97,6 +99,7 @@ export function ManualAdd({ onSaved }: { onSaved?: (e: Entry) => void }) {
           )}
         </div>
       )}
+      {type === 'expense' && <CategoryChips value={category} onChange={setCategory} />}
       <Field label={t.manual.date} type="date" required value={date} onChange={(e) => setDate(e.target.value)} />
       <Field label={t.ledger.note} value={note} onChange={(e) => setNote(e.target.value)} />
       {save.error && <p className="t-body" role="alert">{save.error.message}</p>}

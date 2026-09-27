@@ -27,6 +27,18 @@ export function dayFormat(lang: string = uiLang()): Intl.DateTimeFormat {
   return f
 }
 
+const shortFormats = new Map<string, Intl.DateTimeFormat>()
+
+/** "2026-09-26" → "26 Sep" (chart axes, week labels), in the on-screen language. */
+export function formatShortDay(iso: string, lang: string = uiLang()): string {
+  let f = shortFormats.get(lang)
+  if (!f) {
+    f = new Intl.DateTimeFormat(lang, { day: 'numeric', month: 'short', timeZone: 'UTC', numberingSystem: 'latn' })
+    shortFormats.set(lang, f)
+  }
+  return f.format(new Date(`${iso.slice(0, 10)}T00:00:00Z`)).replace(/Sept/, 'Sep')
+}
+
 /** "2026-09-26" → "26 Sep 2026" (GOAL_2.0 P8). */
 export function formatDay(iso: string | null | undefined): string {
   if (!iso) return ''

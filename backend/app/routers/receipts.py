@@ -19,7 +19,7 @@ from ..auth import CurrentUser, current_user
 from ..db import PG_UNIQUE_VIOLATION, user_client
 from ..errors import AppError
 from ..ratelimit import rate_limit
-from ..ledger import (check_uuid, now_ist, now_iso, parse_iso_date, require_membership, rupees_to_paise,
+from ..ledger import (check_expense_category, check_uuid, now_ist, now_iso, parse_iso_date, require_membership, rupees_to_paise,
                       today_ist)
 from ..services import llm_router, receipt_ocr
 from ..services.sarvam import client as sarvam
@@ -151,6 +151,7 @@ class SaveReceipt(BaseModel):
     # The bill kind and Paid/Credit can still be changed on the review form (GOAL_2.0 P2.5).
     kind: Literal["supplier", "customer", "expense"] | None = None
     settled: bool | None = None
+    expense_category: str | None = None   # GOAL_2.0 P6.6: the chip on an expense bill
 
 
 def _bill_date(raw: str | None) -> str | None:
@@ -220,6 +221,7 @@ def save_receipt(receipt_id: str, body: SaveReceipt, user: CurrentUser = Depends
     auto = d.action == "auto"
     row = {"shop_id": shop_id, "party_id": party_id, "type": etype, "amount_paise": amount_paise,
            "note": vendor if etype in ("expense", "cash_sale") else None, "occurred_on": occurred_on,
+           "expense_category": check_expense_category(etype, body.expense_category),
            "status": "confirmed" if auto else "pending", "source": "receipt", "auto_saved": auto,
            "review_reason": d.reason, "receipt_id": receipt_id, "created_by": user.id}
     if auto:

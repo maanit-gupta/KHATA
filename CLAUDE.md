@@ -137,7 +137,7 @@ Only total, vendor, and date are stored as fields; the full raw OCR JSON is kept
 | PATCH /parties/{id} | `{display_name?, kind?, needs_review?}` | party (renaming updates name_latin) |
 | POST /parties/{id}/merge | `{into_party_id}` | moves all entries to target, adds this name as alias, deletes the now-empty party |
 | GET /entries | `?limit=20&status=` | entries, newest first |
-| POST /entries | `{type, amount_rupees, party_id?, party_name?, note?, occurred_on?}` | entry (manual source, status confirmed) |
+| POST /entries | `{type, amount_rupees, party_id?, party_name?, note?, occurred_on?, expense_category?}` (category: expenses only, GOAL_2.0 P6.6) | entry (manual source, status confirmed) |
 | GET /entries/{id} | — | `{entry, history}`; history rows `{action, at, by: you/another_member, changes:[{field, old, new}]}` (D-009) |
 | PATCH /entries/{id} | any editable field | entry |
 | POST /entries/{id}/confirm | — | entry |
@@ -147,7 +147,7 @@ Only total, vendor, and date are stored as fields; the full raw OCR JSON is kept
 | POST /voice/ask | multipart `audio` | `{text, audio_b64}` |
 | POST /receipts | multipart `image` (JPG/PNG, or a one-page PDF), `kind`, `settled?` | `{receipt_id, status}`; OCR (Extract + Digitise) runs as a BackgroundTask |
 | GET /receipts/{id} | — | status, stage (uploaded/reading/checking while running), vendor_name, bill_date, total_paise, total_check (ok/check), ocr_text, file_type, error |
-| POST /receipts/{id}/save | `{vendor_name, bill_date, total_rupees, customer_name?, kind?, settled?}`; allowed 90 s after upload even if still reading | entry + decision (save rules apply) |
+| POST /receipts/{id}/save | `{vendor_name, bill_date, total_rupees, customer_name?, kind?, settled?, expense_category?}`; allowed 90 s after upload even if still reading | entry + decision (save rules apply) |
 | GET /insights/weekly | — | metrics, narration (in caller's language, number-guarded) |
 | POST /tts | `{text, purpose?: readback/report}` English, ≤ 2500 chars; localized with the number guard first (D-006) | `{text, audio_b64}` in the caller's voice language (`report` → report language, D-062) |
 | GET /review | — | rows of `review_queue` |
@@ -158,6 +158,7 @@ Only total, vendor, and date are stored as fields; the full raw OCR JSON is kept
 | GET /parties/{id}/statement | `?from=&to=` | `{party, opening_balance_paise, closing_balance_paise, rows [{entry_id, occurred_on, type, amount_paise, note, source, delta_paise, running_balance_paise}]}` from the `party_statement` view (P3.2) |
 | GET /members | — | `{members [{user_id, name ("(you)" after your own), display_name, role, joined_at, you}], invite_code}` (P4.6) |
 | GET /activity | — | last 30 audit actions: `{activity [{id, entry_id, action, at, by, by_you, type, amount_paise, party_name, note, changed}]}` (P4.4) |
+| GET /dashboard | — | `{today, strip [4 metrics: today, same day last week, change], register {from, to, days (30, zero-filled, with outstanding credit), weeks (Mon–Sun subtotals of the days shown)}, aging {rows, buckets 0-7/8-30/31-60/60+}, dues {rows}, expenses {this month by category}, top_customers {by_credit, by_collections}}`, all from SQL `dashboard_json` (P6) |
 
 Amounts cross the API as rupees (number) in requests and paise (integer) in responses; the
 frontend formats paise as `₹1,250` (en-IN grouping). Errors: `{error: {code, message}}` with a

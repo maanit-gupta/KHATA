@@ -17,3 +17,6 @@ VOICES = ("shubh", "aditya", "ritu", "priya", "neha", "rahul", "pooja", "rohan",
 # alternatives for a native speaker to choose from (NEEDS_HUMAN N-009). sarvam-translate:v1 only
 # supports "formal".
 TRANSLATE = {lang: {"model": "mayura:v1", "mode": "modern-colloquial"} for lang in LANGS}
+
+# GOAL_2.0 P6.6 (migration 003's check constraint): expenses only; null = "Uncategorised".
+EXPENSE_CATEGORIES = ("stock_other", "rent", "electricity", "wages", "transport", "repairs", "misc")

@@ -1,0 +1,60 @@
+{
+  "measured_at": "2026-09-27 09:06:55 IST",
+  "entries": 716,
+  "days": 90,
+  "customers": 25,
+  "suppliers": 6,
+  "api_ms": {
+    "runs": [
+      794,
+      667,
+      655,
+      728,
+      716,
+      715,
+      660
+    ],
+    "median": 715,
+    "max": 794
+  },
+  "aging_rows": 18,
+  "register_days": 30,
+  "note": "GET /dashboard through the FastAPI app (TestClient) from the dev machine to the live Supabase project.",
+  "browser_ms": {
+    "runs": [
+      {
+        "width": 1280,
+        "ms": 1119,
+        "cold": true
+      },
+      {
+        "width": 1280,
+        "ms": 1033,
+        "cold": false
+      },
+      {
+        "width": 1280,
+        "ms": 1015,
+        "cold": false
+      },
+      {
+        "width": 390,
+        "ms": 1104,
+        "cold": true
+      },
+      {
+        "width": 390,
+        "ms": 1098,
+        "cold": false
+      },
+      {
+        "width": 390,
+        "ms": 1089,
+        "cold": false
+      }
+    ],
+    "median": 1098,
+    "max": 1119,
+    "note": "Full page: new navigation to /app/dashboard (session in storage) until the strip, aging, register and first chart are visible. Production build via vite preview; API on localhost; live Supabase."
+  }
+}

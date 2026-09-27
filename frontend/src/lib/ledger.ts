@@ -16,6 +16,10 @@ export type Entry = {
   created_by?: string | null; confirmed_by?: string | null; added_by?: string | null; confirmed_by_name?: string | null
   expense_category?: string | null
 }
+/** GOAL_2.0 P6.6, as in backend app/constants.py. */
+export const EXPENSE_CATEGORIES = ['stock_other', 'rent', 'electricity', 'wages', 'transport', 'repairs', 'misc'] as const
+export type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number]
+
 export type Party = {
   party_id: string; display_name: string; kind: 'customer' | 'supplier'
   needs_review: boolean; balance_paise: number; last_activity: string | null
@@ -43,7 +47,7 @@ export function useLedgerMutation<A, R>(fn: (arg: A) => Promise<R>) {
   return useMutation({
     mutationFn: fn,
     onSuccess: () => {
-      for (const key of ['entries', 'entry', 'parties', 'party', 'review', 'insights']) {
+      for (const key of ['entries', 'entry', 'ledger', 'parties', 'party', 'review', 'insights', 'dashboard', 'activity', 'report']) {
         qc.invalidateQueries({ queryKey: [key] })
       }
     },

@@ -25,12 +25,11 @@ def get_membership(user: CurrentUser) -> dict | None:
 
 @router.get("/me")
 def read_me(user: CurrentUser = Depends(current_user)):
-    membership = get_membership(user)
-    shop = None
-    if membership:
-        rows = (user_client(user.token).table("shops").select(SHOP_COLS)
-                .eq("id", membership["shop_id"]).limit(1).execute().data)
-        shop = rows[0] if rows else None
+    # One round trip: the membership with its shop embedded (every screen waits on this call).
+    rows = (user_client(user.token).table("shop_members").select(f"{MEMBER_COLS}, shops({SHOP_COLS})")
+            .eq("user_id", user.id).limit(1).execute().data)
+    membership = rows[0] if rows else None
+    shop = membership.pop("shops", None) if membership else None
     return {"user": {"id": user.id, "email": user.email, "name": user.name},
             "membership": membership, "shop": shop}
 

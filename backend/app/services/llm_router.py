@@ -27,6 +27,7 @@ from typing import Any, Callable, Protocol
 
 from groq import APIStatusError, Groq
 
+from ..constants import EXPENSE_CATEGORIES
 from ..errors import AppError
 from .retry import with_backoff
 
@@ -93,7 +94,7 @@ ENTRY_SCHEMA = {
     "type": "object",
     "additionalProperties": False,
     "required": ["type", "party_name", "amount_rupees", "note", "occurred_on",
-                 "needs_clarification", "clarification_question"],
+                 "needs_clarification", "clarification_question", "expense_category"],
     "properties": {
         "type": {"type": "string", "enum": [
             "credit_given", "payment_received", "cash_sale",
@@ -105,6 +106,9 @@ ENTRY_SCHEMA = {
                         "description": "ISO date if the speaker named a day, else null (= today)"},
         "needs_clarification": {"type": "boolean"},
         "clarification_question": {"type": ["string", "null"]},
+        # GOAL_2.0 P6.6: only for an expense; null when the note doesn't say what it was for.
+        "expense_category": {"type": ["string", "null"], "enum": [
+            "stock_other", "rent", "electricity", "wages", "transport", "repairs", "misc", None]},
     },
 }
 
@@ -119,6 +123,10 @@ by speech-to-text, so it may read awkwardly) into ONE ledger entry. Rules:
 - Buying stock paid on the spot -> purchase_paid; on credit -> purchase_credit.
 - Number words (convert exactly): dhai sau = 250; saade teen hazaar = 3500; sava sau = 125;
   two-fifty = 250; one thousand two hundred = 1200.
+- expense_category: only when type is expense, else null. rent; electricity (power, light bill);
+  wages (salary, staff pay); transport (auto, tempo, delivery, fuel); repairs; stock_other (goods
+  or supplies for the shop that are not stock bought from a supplier); misc (anything else). Null if
+  the note doesn't say what the expense was for.
 - If the amount, the party, or the direction of money is unclear, set needs_clarification=true
   and ask ONE short question. Never guess an amount.
 - Output only fields in the schema."""
@@ -133,6 +141,7 @@ class ParsedEntry:
     occurred_on: str | None
     needs_clarification: bool
     clarification_question: str | None
+    expense_category: str | None = None
 
 
 def parse_entry(transcript: str, today_iso: str) -> ParsedEntry:
@@ -160,8 +169,11 @@ def parse_entry(transcript: str, today_iso: str) -> ParsedEntry:
     if needs and not question:
         question = "How much, and for whom?"  # English; goes through the same translate+TTS path
 
+    category = d.get("expense_category")
+    if d["type"] != "expense" or category not in EXPENSE_CATEGORIES:
+        category = None   # the schema allows it anywhere; only expenses keep one
     return ParsedEntry(d["type"], d["party_name"], amount_paise, d["note"],
-                       d["occurred_on"], needs, question)
+                       d["occurred_on"], needs, question, category)
 
 
 # ---------------------------------------------------------------------------
