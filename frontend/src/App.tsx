@@ -22,6 +22,7 @@ const DashboardScreen = lazy(() => import('./screens/DashboardScreen').then((m) 
 const ReviewScreen = lazy(() => import('./screens/ReviewScreen').then((m) => ({ default: m.ReviewScreen })))
 const EntryScreen = lazy(() => import('./screens/EntryScreen').then((m) => ({ default: m.EntryScreen })))
 const ScanScreen = lazy(() => import('./screens/ScanScreen').then((m) => ({ default: m.ScanScreen })))
+const ReportScreen = lazy(() => import('./screens/ReportScreen').then((m) => ({ default: m.ReportScreen })))
 const SettingsScreen = lazy(() => import('./screens/SettingsScreen').then((m) => ({ default: m.SettingsScreen })))
 
 const DevUI = import.meta.env.DEV ? lazy(() => import('./dev/DevUI')) : null
@@ -61,6 +62,7 @@ export function App() {
             <Route path="entries/:id" element={<EntryScreen />} />
             <Route path="scan" element={<ScanScreen />} />
             <Route path="settings" element={<SettingsScreen />} />
+            <Route path="report" element={<ReportScreen />} />
           </Route>
         </Route>
         {DevUI && <Route path="/dev/ui" element={<DevUI />} />}

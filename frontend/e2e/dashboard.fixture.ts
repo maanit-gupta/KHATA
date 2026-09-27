@@ -16,9 +16,9 @@ function monday(iso: string) {
   return d.toISOString().slice(0, 10)
 }
 
-function register(values: Record<number, Partial<Fig>>, openingCredit = 0) {
+function register(values: Record<number, Partial<Fig>>, openingCredit = 0, length = 30, endOffset = 0) {
   let outstanding = openingCredit
-  const days = Array.from({ length: 30 }, (_, i) => 29 - i).map((n) => {
+  const days = Array.from({ length }, (_, i) => endOffset + length - 1 - i).map((n) => {
     const f = { ...ZERO, ...(values[n] ?? {}) }
     f.net_cash_paise = f.cash_sales_paise + f.collected_paise - f.purchases_paid_paise - f.supplier_paid_paise - f.expenses_paise
     outstanding += f.credit_given_paise - f.collected_paise
@@ -31,7 +31,7 @@ function register(values: Record<number, Partial<Fig>>, openingCredit = 0) {
     w.last_day = d.day
     for (const k of Object.keys(ZERO) as (keyof Fig)[]) w[k] += d[k]
   }
-  return { from: today(29), to: today(0), days, weeks }
+  return { from: today(endOffset + length - 1), to: today(endOffset), days, weeks }
 }
 
 const monthStart = () => `${today(0).slice(0, 8)}01`
@@ -94,4 +94,21 @@ export function seededDashboard(ids: { kavya: string; arjun: string; meena: stri
       by_collections: [{ party_id: ids.kavya, display_name: 'Kavya', credit_given_paise: 70000, collected_paise: 10000 },
         { party_id: ids.meena, display_name: 'Meena', credit_given_paise: 20000, collected_paise: 5000 }] },
   }
+}
+
+/** GET /reports/data for [from, to] (both within the last 60 days): the seeded shop's figures. */
+export function reportData(from: string, to: string, ids: { kavya: string; arjun: string; meena: string; lotus: string; balaji: string }) {
+  const off = (iso: string) => Math.round((Date.parse(`${today(0)}T00:00:00Z`) - Date.parse(`${iso}T00:00:00Z`)) / 86_400_000)
+  const end = off(to)
+  const length = off(from) - end + 1
+  const values: Record<number, Partial<Fig>> = {
+    0: { cash_sales_paise: 30000, expenses_paise: 11000, entry_count: 3 }, 1: { purchases_paise: 30000, purchases_paid_paise: 30000, entry_count: 1 },
+    2: { supplier_paid_paise: 10000, entry_count: 1 }, 3: { credit_given_paise: 20000, entry_count: 1 }, 5: { collected_paise: 15000, entry_count: 1 },
+  }
+  const reg = register(values, 0, length, end)
+  const totals = { ...ZERO }
+  for (const d of reg.days) for (const k of Object.keys(ZERO) as (keyof Fig)[]) totals[k] += d[k]
+  const seeded = seededDashboard(ids)
+  return { from, to, totals, register: { days: reg.days, weeks: reg.weeks }, aging: seeded.aging, dues: seeded.dues,
+    expenses: [{ category: 'transport', total_paise: 7000, entry_count: 1 }, { category: 'uncategorised', total_paise: 4000, entry_count: 1 }] }
 }

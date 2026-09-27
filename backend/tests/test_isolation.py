@@ -289,6 +289,45 @@ def c_dashboard(client, w):
     _no_b(w, r)
 
 
+def _quiet_groq(fake_groq):
+    fake_groq.handler = lambda kw: fake_groq.text('{"summary": "No numbers here.", "tips": []}')
+
+
+def c_summary(client, w, fake_groq):
+    _quiet_groq(fake_groq)
+    r = client.get("/reports/summary?period=week", headers=w.a["headers"]).json()
+    sent = fake_groq.calls[-1]["messages"][1]["content"] if fake_groq.calls else ""
+    assert "Suresh" not in sent and "Mahesh" not in sent        # B's names never reach the model
+    assert '"credit_given_rupees": 10' in sent                   # A's own ₹10
+    _no_b(w, r)
+
+
+def c_summary_refresh(client, w, fake_groq):
+    _quiet_groq(fake_groq)
+    r = client.post("/reports/summary/refresh", json={"period": "month"}, headers=w.a["headers"])
+    assert r.status_code == 200, r.text
+    _no_b(w, r.json())
+
+
+def c_report_data(client, w):
+    today = today_ist()
+    r = client.get(f"/reports/data?from={(today - timedelta(days=6)).isoformat()}&to={today.isoformat()}",
+                   headers=w.a["headers"]).json()
+    assert [x["display_name"] for x in r["aging"]["rows"]] == ["Ramesh"] and r["totals"]["credit_given_paise"] == 1000
+    _no_b(w, r)
+
+
+def c_briefing(client, w):
+    r = client.get("/briefing", headers=w.a["headers"]).json()
+    assert "Suresh" not in r["text_en"] and "Mahesh" not in r["text_en"]
+    _no_b(w, r)
+
+
+def c_briefing_audio(client, w):
+    r = client.post("/briefing/audio", headers=w.a["headers"]).json()
+    assert f"/{w.a['shop_id']}/" in r["url"] and w.b["shop_id"] not in r["url"]
+
+
 CASES = {
     ("GET", "/me"): c_me,
     ("PATCH", "/me"): c_patch_me,
@@ -321,6 +360,11 @@ CASES = {
     ("GET", "/members"): c_members,
     ("GET", "/activity"): c_activity,
     ("GET", "/dashboard"): c_dashboard,
+    ("GET", "/reports/summary"): c_summary,
+    ("POST", "/reports/summary/refresh"): c_summary_refresh,
+    ("GET", "/reports/data"): c_report_data,
+    ("GET", "/briefing"): c_briefing,
+    ("POST", "/briefing/audio"): c_briefing_audio,
 }
 # Routes that act only on the caller's own shop by construction (shop_id comes from the caller's
 # membership, never from the request) and have no B-owned id to aim at. Each has a reason.
@@ -343,6 +387,8 @@ SPEC_ROUTES = {
 } | {  # GOAL_2.0 additions (CLAUDE.md §6.5 is updated with each)
     ("GET", "/ledger"), ("GET", "/ledger/export.csv"), ("GET", "/parties/suggest"),
     ("GET", "/parties/{party_id}/statement"), ("GET", "/members"), ("GET", "/activity"), ("GET", "/dashboard"),
+    ("GET", "/reports/summary"), ("POST", "/reports/summary/refresh"), ("GET", "/reports/data"),
+    ("GET", "/briefing"), ("POST", "/briefing/audio"),
 }
 
 
@@ -422,6 +468,35 @@ def test_a_gets_only_zeros_from_bs_shop_through_the_004_functions(world, fn, ext
     assert money(theirs) == 0
     if (fn, extra) in ZERO_FILLED and fn not in ("collections_vs_last_week",):
         assert money(mine) > 0, "B should see its own credit (proves the zeros above are isolation)"
+    _no_b(world, theirs)
+
+
+@pytest.mark.parametrize("fn, args", [
+    ("period_totals", {"p_from": "2000-01-01", "p_to": "2100-01-01"}),
+    ("tip_facts_json", {}), ("summary_facts_json", {"p_period": "month"}),
+])
+def test_a_gets_only_zeros_from_bs_shop_through_the_006_functions(world, fn, args):
+    """Migration 006 is security invoker too: asked for B's shop, A's RLS leaves nothing."""
+    today = today_ist().isoformat()
+    full = {"p_shop": world.b["shop_id"], **({"p_today": today} if fn != "period_totals" else {}), **args}
+    theirs = user_client(world.a["token"]).rpc(fn, full).execute().data
+    mine = user_client(world.b["token"]).rpc(fn, full).execute().data
+
+    def money(x):
+        if isinstance(x, dict):
+            return sum(abs(v) if k.endswith("_paise") and isinstance(v, int) else money(v) for k, v in x.items())
+        return sum(money(v) for v in x) if isinstance(x, list) else 0
+    assert money(theirs) == 0 and money(mine) > 0
+    if fn != "period_totals":
+        assert theirs["aging"] == [] and theirs["pending_review"] == 0 and mine["pending_review"] > 0
+    _no_b(world, theirs)
+
+
+def test_report_json_for_bs_shop_is_empty(world):
+    args = {"p_shop": world.b["shop_id"], "p_from": "2026-01-01", "p_to": today_ist().isoformat()}
+    theirs = user_client(world.a["token"]).rpc("report_json", args).execute().data
+    assert theirs["aging"]["rows"] == [] and theirs["totals"]["credit_given_paise"] == 0
+    assert user_client(world.b["token"]).rpc("report_json", args).execute().data["totals"]["credit_given_paise"] == 20000
     _no_b(world, theirs)
 
 

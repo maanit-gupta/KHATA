@@ -28,10 +28,12 @@ export function AppShell() {
   useLiveSync(me.data?.membership?.shop_id, me.data?.user.id, announce)
   return (
     <div className="min-h-dvh bg-paper">
-      <Header home="/app">
-        <AppNav reviewCount={review.data?.count ?? 0} />
-      </Header>
-      <main className="pt-14">
+      <div className="no-print">
+        <Header home="/app">
+          <AppNav reviewCount={review.data?.count ?? 0} />
+        </Header>
+      </div>
+      <main className="pt-14 print:pt-0">
         <Suspense fallback={null}>
           <Outlet />
         </Suspense>

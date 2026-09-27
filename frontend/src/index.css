@@ -100,3 +100,22 @@
   .route-rise { animation: none; }
   .motion-ui, .motion-ui * { transition-duration: 0s !important; }
 }
+
+/* GOAL_2.0 P7.3: the printable report fits A4 with the DESIGN.md typography. The browser's own
+   print (Save as PDF) shapes every Indic script correctly. */
+@page { size: A4; margin: 14mm 12mm; }
+@media print {
+  .no-print { display: none !important; }
+  html, body { background: #fff; }
+  body { font-size: 11pt; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .report-page { padding: 0 !important; gap: 0 !important; }
+  .report { gap: 18px !important; }
+  .report .t-h2 { font-size: 26pt; }
+  .report .t-h3 { font-size: 15pt; }
+  .report .t-body-lg { font-size: 11.5pt; }
+  .report .t-body { font-size: 10pt; }
+  .report .t-label { font-size: 8.5pt; }
+  .report table { font-size: 9pt; }
+  .report tr, .report figure, .avoid-break { break-inside: avoid; }
+  .report h2, .report h3 { break-after: avoid; }
+}

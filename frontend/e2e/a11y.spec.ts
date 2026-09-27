@@ -19,6 +19,7 @@ const SCREENS: [string, string, boolean][] = [
   ['home', '/app', true], ['ledger-table', '/app/ledger', true], ['parties', '/app/parties', true], ['party', '/app/parties/p-1', true],
   ['review', '/app/review', true], ['entry', '/app/entries/e-4', true], ['scan', '/app/scan', true],
   ['settings', '/app/settings', true], ['about', '/about', false],
+  ['dashboard', '/app/dashboard', true], ['report', '/app/report?period=week', true],
 ]
 
 async function settle(page: Page) {

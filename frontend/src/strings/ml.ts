@@ -550,6 +550,31 @@ export const ml: Strings = {
     },
   },
 
+  reports: {
+    summaryTitle: 'ചുരുക്കത്തിൽ',
+    tabs: { day: 'ഇന്ന്', week: 'ഈ ആഴ്ച', month: 'ഈ മാസം' },
+    tipsTitle: 'ശ്രദ്ധിക്കേണ്ടവ',
+    noTips: 'ഇപ്പോൾ ശ്രദ്ധിക്കേണ്ടതായി ഒന്നുമില്ല.',
+    refresh: 'വീണ്ടും എഴുതുക',
+    refreshing: 'എഴുതുന്നു…',
+    written: (time: string) => `${time}-ന് കടയുടെ കണക്കുകളിൽ നിന്ന് എഴുതിയത്; ഇതിലെ ഓരോ സംഖ്യയും അവയുമായി ഒത്തുനോക്കിയതാണ്.`,
+    open: 'അച്ചടിക്കാവുന്ന റിപ്പോർട്ട്',
+    heading: ['കടയുടെ', 'റിപ്പോർട്ട്.'],
+    period: 'കാലയളവ്',
+    download: 'PDF ഡൗൺലോഡ്',
+    printHelp: 'പ്രിന്റ് ജാലകം തുറക്കും. പകർപ്പ് സൂക്ഷിക്കാൻ “Save as PDF” തിരഞ്ഞെടുക്കൂ.',
+    footer: (shop: string, range: string, at: string) => `${shop} · ${range} · KHATA ${at}-ന് തയ്യാറാക്കിയത്`,
+    totalsTitle: 'ആകെ',
+    expensesTitle: 'വിഭാഗം തിരിച്ചുള്ള ചെലവുകൾ',
+    statementTitle: (name: string) => `കണക്ക് വിവരം: ${name}`,
+    back: 'ഡാഷ്‌ബോർഡിലേക്ക് മടങ്ങുക',
+  },
+  briefing: {
+    title: 'ഇന്നത്തെ വിവരം',
+    play: 'വിവരം കേൾക്കൂ',
+    close: 'അടയ്ക്കുക',
+  },
+
   toast: {
     undo: 'തിരിച്ചെടുക്കുക',
     undone: 'തിരിച്ചെടുത്തു.',

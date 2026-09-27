@@ -96,5 +96,28 @@ def make_tools(db, today: date) -> dict[str, Callable[..., Any]]:
                              "days_since_last_activity": (today - date.fromisoformat(r["last_activity"])).days
                              if r["last_activity"] else None} for r in rows]}
 
+    def get_daily_register(shop_id: str, from_date: str, to_date: str) -> dict:
+        """GOAL_2.0 P7.5: day by day (confirmed entries), at most 62 days."""
+        f, t = _iso(from_date, "from_date"), _iso(to_date, "to_date")
+        if date.fromisoformat(t) < date.fromisoformat(f) or (date.fromisoformat(t) - date.fromisoformat(f)).days > 61:
+            return {"error": "from_date must be on or before to_date, at most 62 days apart"}
+        rows = db.rpc("register_days", {"p_shop": shop_id, "p_from": f, "p_to": t}).execute().data
+        return {"days": [{"date": r["day"], "cash_sales_rupees": rupees(r["cash_sales_paise"]),
+                          "credit_given_rupees": rupees(r["credit_given_paise"]),
+                          "collected_rupees": rupees(r["collected_paise"]), "expenses_rupees": rupees(r["expenses_paise"]),
+                          "net_cash_in_hand_rupees": rupees(r["net_cash_paise"]), "entries": r["entry_count"]}
+                         for r in rows if r["entry_count"]]}
+
+    def get_credit_aging(shop_id: str) -> dict:
+        """GOAL_2.0 P7.5: customers who owe the shop, with how long since they last paid (or since
+        their first credit if they never paid)."""
+        rows = (db.table("credit_aging").select("display_name, balance_paise, age_days, last_payment_on, bucket")
+                .eq("shop_id", shop_id).order("age_days", desc=True).limit(30).execute().data)
+        return {"rule": "days since the last payment, or since the first credit if they never paid",
+                "customers": [{"name": r["display_name"], "owes_rupees": rupees(r["balance_paise"]),
+                               "days": r["age_days"], "last_payment_date": r["last_payment_on"],
+                               "age_bucket_days": r["bucket"]} for r in rows]}
+
     return {"find_party": find_party, "get_party_balance": get_party_balance, "list_entries": list_entries,
-            "get_period_summary": get_period_summary, "top_debtors": top_debtors}
+            "get_period_summary": get_period_summary, "top_debtors": top_debtors,
+            "get_daily_register": get_daily_register, "get_credit_aging": get_credit_aging}

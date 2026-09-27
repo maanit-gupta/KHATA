@@ -550,6 +550,31 @@ export const hi: Strings = {
     },
   },
 
+  reports: {
+    summaryTitle: 'संक्षेप में',
+    tabs: { day: 'आज', week: 'इस हफ़्ते', month: 'इस महीने' },
+    tipsTitle: 'ध्यान देने लायक',
+    noTips: 'अभी किसी बात पर ध्यान देने की ज़रूरत नहीं।',
+    refresh: 'फिर से लिखें',
+    refreshing: 'लिखा जा रहा है…',
+    written: (time: string) => `${time} पर दुकान के आँकड़ों से लिखा गया; इसका हर अंक उन्हीं से जाँचा गया है।`,
+    open: 'छापने लायक रिपोर्ट',
+    heading: ['दुकान की', 'रिपोर्ट।'],
+    period: 'समय',
+    download: 'PDF डाउनलोड करें',
+    printHelp: 'प्रिंट की खिड़की खुलेगी। कॉपी रखने के लिए “Save as PDF” चुनें।',
+    footer: (shop: string, range: string, at: string) => `${shop} · ${range} · KHATA ने ${at} पर बनाया`,
+    totalsTitle: 'कुल',
+    expensesTitle: 'श्रेणी के हिसाब से खर्च',
+    statementTitle: (name: string) => `हिसाब का ब्योरा: ${name}`,
+    back: 'डैशबोर्ड पर वापस',
+  },
+  briefing: {
+    title: 'आज की जानकारी',
+    play: 'जानकारी सुनें',
+    close: 'बंद करें',
+  },
+
   toast: {
     undo: 'वापस लें',
     undone: 'वापस ले लिया।',

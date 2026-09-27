@@ -5,7 +5,7 @@
  * Voice, question and OCR results are queued by each test (the real services are never called).
  */
 import type { Page, Route, WebSocketRoute } from '@playwright/test'
-import { emptyDashboard } from './dashboard.fixture'
+import { emptyDashboard, reportData } from './dashboard.fixture'
 
 export const API = 'http://api.test'
 export const SB = 'http://sb.test'
@@ -449,6 +449,24 @@ export class MockApi {
     }
 
     if (path === '/dashboard') return ok(this.dashboard ?? emptyDashboard())
+    if (path === '/reports/summary' || path === '/reports/summary/refresh') {
+      const period = String((method === 'POST' ? body.period : url.searchParams.get('period')) ?? 'day')
+      if (method === 'POST' && ++this.refreshes > 1) return this.err(route, 429, 'refresh_too_soon', 'This summary was just written. You can refresh it again in 5 min.')
+      return ok(this.summary(period))
+    }
+    if (path === '/reports/data') {
+      const ids = { kavya: this.party('Kavya'), arjun: this.party('Arjun'), meena: this.party('Meena'),
+        lotus: this.party('Lotus Agencies', 'supplier'), balaji: this.party('Balaji Stores', 'supplier') }
+      return ok(reportData(String(url.searchParams.get('from')), String(url.searchParams.get('to')), ids))
+    }
+    if (path === '/briefing') {
+      const lang = this.outLang('report')
+      return ok({ day: today(), lang, text: this.tag(this.briefingText, 'report'), text_en: this.briefingText, voice: 'shubh', audio_cached: this.briefingAudio > 0 })
+    }
+    if (path === '/briefing/audio') {
+      this.briefingAudio++
+      return ok({ url: `data:audio/mpeg;base64,${SILENT_MP3}`, voice: 'shubh', cached: this.briefingAudio > 1 })
+    }
     if (path === '/members') {
       return ok({ members: this.members.map((mm) => ({ ...mm, name: this.memberName(mm.user_id), you: mm.user_id === this.actor })), invite_code: this.shop.invite_code })
     }
@@ -531,6 +549,19 @@ export class MockApi {
 
   /** The language of every POST /tts, in order. */
   ttsLangs: string[] = []
+
+  /** GOAL_2.0 P7 (the backend number-guards and caches these; here they are fixtures). */
+  tips: { rule: string; text: string }[] = []
+  refreshes = 0
+  briefingText = 'Yesterday: 300 rupees in cash sales, 0 rupees given on credit, 150 rupees collected and 0 rupees spent. Nothing is waiting in Review.'
+  briefingAudio = 0
+  summary(period: string) {
+    const from = period === 'day' ? today(0) : period === 'month' ? `${today(0).slice(0, 8)}01` : today((new Date(`${today(0)}T00:00:00Z`).getUTCDay() + 6) % 7)
+    const en = period === 'week' ? 'This week so far you sold 450 rupees in cash.' : 'Today so far you sold 300 rupees in cash.'
+    return { period, period_start: from, from, to: today(0), lang: this.outLang('report'), summary: this.tag(en, 'report'),
+      tips: this.tips.map((x) => this.tag(x.text, 'report')), summary_en: en, tips_en: this.tips.map((x) => x.text),
+      tip_facts: this.tips.map((x) => ({ rule: x.rule })), cached: false, generated_at: new Date().toISOString() }
+  }
 
   private fromQueue(route: Route, queue: unknown[], what: string) {
     const next = queue.shift()

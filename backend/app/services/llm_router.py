@@ -252,6 +252,16 @@ QA_TOOLS = [
                        "required": ["from_date", "to_date"],
                        "properties": {"from_date": {"type": "string"}, "to_date": {"type": "string"}}}}},
     {"type": "function", "function": {
+        "name": "get_daily_register",
+        "description": "Day-by-day totals (cash sales, credit given, collected, expenses, net cash in hand) between two ISO dates, at most 62 days; days with no entries are left out.",
+        "parameters": {"type": "object", "additionalProperties": False,
+                       "required": ["from_date", "to_date"],
+                       "properties": {"from_date": {"type": "string"}, "to_date": {"type": "string"}}}}},
+    {"type": "function", "function": {
+        "name": "get_credit_aging",
+        "description": "Customers who owe money, oldest first, with days since their last payment (or first credit if they never paid). Use for 'who hasn't paid' questions.",
+        "parameters": {"type": "object", "additionalProperties": False, "required": [], "properties": {}}}},
+    {"type": "function", "function": {
         "name": "top_debtors",
         "description": "Parties who owe the most, with days since last activity.",
         "parameters": {"type": "object", "additionalProperties": False, "required": [],
@@ -444,3 +454,34 @@ def narrate_insights(metrics: dict[str, Any]) -> str:
         ],
     )
     return resp.choices[0].message.content.strip()
+
+
+# ---------------------------------------------------------------------------
+# 5) Reports and tips (GOAL_2.0 P7.2) — SQL decides the facts, code the tips, the model phrases
+# ---------------------------------------------------------------------------
+REPORT_SCHEMA = {
+    "type": "object", "additionalProperties": False, "required": ["summary", "tips"],
+    "properties": {"summary": {"type": "string"}, "tips": {"type": "array", "items": {"type": "string"}}},
+}
+REPORT_SYSTEM = """You write a short report for a small shop's owner from the JSON facts given.
+- summary: at most three short sentences on the period's figures against the comparison period.
+  If "so_far" is true the period isn't over: say "so far".
+- tips: exactly one short sentence for each item of "tips", in the same order: what it means and
+  one thing to do.
+- Amounts are in rupees: write them as digits followed by the word rupees. Use only numbers given,
+  copied exactly. Never add, subtract, round, or give percentages or ratios.
+- Mention nothing that is not in the facts. Plain English; it may be translated and spoken."""
+
+
+def phrase_report(facts: dict[str, Any]) -> tuple[str, list[str]]:
+    """facts are SQL numbers in RUPEES (like narrate_insights). Returns (summary, tips) in English;
+    the caller number-guards every string against the facts and falls back to templates."""
+    resp = _complete(
+        model=PARSE_MODEL, temperature=0.3,
+        messages=[{"role": "system", "content": REPORT_SYSTEM},
+                  {"role": "user", "content": json.dumps(facts)}],
+        response_format={"type": "json_schema",
+                         "json_schema": {"name": "shop_report", "strict": True, "schema": REPORT_SCHEMA}},
+    )
+    d = json.loads(resp.choices[0].message.content)
+    return str(d["summary"]).strip(), [str(t).strip() for t in d["tips"]]

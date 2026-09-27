@@ -550,6 +550,31 @@ export const kn: Strings = {
     },
   },
 
+  reports: {
+    summaryTitle: 'ಸಂಕ್ಷಿಪ್ತವಾಗಿ',
+    tabs: { day: 'ಇಂದು', week: 'ಈ ವಾರ', month: 'ಈ ತಿಂಗಳು' },
+    tipsTitle: 'ಗಮನಿಸಬೇಕಾದವು',
+    noTips: 'ಈಗ ಗಮನಿಸಬೇಕಾದದ್ದು ಏನೂ ಇಲ್ಲ.',
+    refresh: 'ಮತ್ತೆ ಬರೆಯಿರಿ',
+    refreshing: 'ಬರೆಯುತ್ತಿದೆ…',
+    written: (time: string) => `${time} ಕ್ಕೆ ಅಂಗಡಿಯ ಅಂಕಿಗಳಿಂದ ಬರೆಯಲಾಗಿದೆ; ಇದರ ಪ್ರತಿ ಸಂಖ್ಯೆಯನ್ನೂ ಅವುಗಳೊಂದಿಗೆ ಪರಿಶೀಲಿಸಲಾಗಿದೆ.`,
+    open: 'ಮುದ್ರಿಸಬಹುದಾದ ವರದಿ',
+    heading: ['ಅಂಗಡಿ', 'ವರದಿ.'],
+    period: 'ಅವಧಿ',
+    download: 'PDF ಡೌನ್‌ಲೋಡ್',
+    printHelp: 'ಮುದ್ರಣ ಕಿಟಕಿ ತೆರೆಯುತ್ತದೆ. ಪ್ರತಿ ಇಟ್ಟುಕೊಳ್ಳಲು “Save as PDF” ಆರಿಸಿ.',
+    footer: (shop: string, range: string, at: string) => `${shop} · ${range} · KHATA ${at} ರಂದು ತಯಾರಿಸಿದೆ`,
+    totalsTitle: 'ಒಟ್ಟು',
+    expensesTitle: 'ವರ್ಗವಾರು ಖರ್ಚುಗಳು',
+    statementTitle: (name: string) => `ಲೆಕ್ಕದ ವಿವರ: ${name}`,
+    back: 'ಡ್ಯಾಶ್‌ಬೋರ್ಡ್‌ಗೆ ಹಿಂತಿರುಗಿ',
+  },
+  briefing: {
+    title: 'ಇಂದಿನ ಮಾಹಿತಿ',
+    play: 'ಮಾಹಿತಿ ಕೇಳಿ',
+    close: 'ಮುಚ್ಚಿ',
+  },
+
   toast: {
     undo: 'ಹಿಂಪಡೆಯಿರಿ',
     undone: 'ಹಿಂಪಡೆಯಲಾಗಿದೆ.',

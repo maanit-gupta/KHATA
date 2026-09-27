@@ -550,6 +550,31 @@ export const te: Strings = {
     },
   },
 
+  reports: {
+    summaryTitle: 'క్లుప్తంగా',
+    tabs: { day: 'ఈ రోజు', week: 'ఈ వారం', month: 'ఈ నెల' },
+    tipsTitle: 'గమనించాల్సినవి',
+    noTips: 'ప్రస్తుతం గమనించాల్సినది ఏదీ లేదు.',
+    refresh: 'మళ్లీ రాయి',
+    refreshing: 'రాస్తోంది…',
+    written: (time: string) => `${time}కి దుకాణం అంకెల నుండి రాశాం; ఇందులోని ప్రతి అంకె వాటితో తనిఖీ అయింది.`,
+    open: 'ముద్రించగల నివేదిక',
+    heading: ['దుకాణం', 'నివేదిక.'],
+    period: 'కాలం',
+    download: 'PDF డౌన్‌లోడ్',
+    printHelp: 'ప్రింట్ విండో తెరుచుకుంటుంది. కాపీ ఉంచుకోవడానికి “Save as PDF” ఎంచుకోండి.',
+    footer: (shop: string, range: string, at: string) => `${shop} · ${range} · KHATA ${at}న తయారుచేసింది`,
+    totalsTitle: 'మొత్తాలు',
+    expensesTitle: 'వర్గాల వారీగా ఖర్చులు',
+    statementTitle: (name: string) => `ఖాతా వివరం: ${name}`,
+    back: 'డాష్‌బోర్డ్‌కి తిరిగి',
+  },
+  briefing: {
+    title: 'ఈ రోజు సమాచారం',
+    play: 'సమాచారం వినండి',
+    close: 'మూసివేయి',
+  },
+
   toast: {
     undo: 'వెనక్కి',
     undone: 'వెనక్కి తీసుకున్నాం.',

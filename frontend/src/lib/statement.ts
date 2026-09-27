@@ -5,7 +5,7 @@ import { formatPaise } from './money'
 
 export type StatementRow = { entry_id: string; occurred_on: string; type: EntryType; amount_paise: number; note: string | null
   source: string; delta_paise: number; running_balance_paise: number }
-export type Statement = { from: string | null; to: string | null; opening_balance_paise: number
+export type Statement = { party?: { display_name: string; kind: string }; from: string | null; to: string | null; opening_balance_paise: number
   closing_balance_paise: number; rows: StatementRow[] }
 
 export const useStatement = (partyId: string, from: string, to: string) =>

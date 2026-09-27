@@ -116,6 +116,12 @@ def time_api(creds_path: Path) -> None:
 def cleanup(creds_path: Path) -> None:
     c = json.loads(creds_path.read_text())
     admin = admin_client()
+    for bucket in ("voice", "receipts"):     # e.g. the P7 live briefing's audio (live_briefing.mjs)
+        files = admin.storage.from_(bucket).list(c["shop_id"]) or []
+        paths = [f"{c['shop_id']}/{f['name']}" for f in files if f.get("name")]
+        if paths:
+            admin.storage.from_(bucket).remove(paths)
+            print("removed", len(paths), "file(s) from", bucket)
     admin.table("audit_log").delete().eq("shop_id", c["shop_id"]).execute()
     admin.table("shops").delete().eq("id", c["shop_id"]).execute()
     for u in c["users"]:
